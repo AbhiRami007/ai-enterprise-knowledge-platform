@@ -51,10 +51,42 @@ pending → processing → ready
 
 The document status allows the system to track where each document is in the processing pipeline.
 
+A document enters `pending` after successful upload and persistence.
+When a background worker begins processing the document, its status changes to `processing`.
+
 ### Failure Recovery
 
 Document processing must account for server crashes and interrupted jobs.
 A document should not remain permanently stuck in `processing` if its processing job fails or the worker crashes.
+
+### Asynchronous Processing
+
+Document processing is handled asynchronously rather than blocking the upload request.
+
+The upload API accepts the document, persists the necessary information, and creates a processing job. Background workers perform expensive operations such as text extraction, chunking, and embedding.
+
+### Idempotency
+
+Client retries can result in duplicate requests, especially when a client times out without knowing whether the server completed the operation.
+
+The system will use idempotency mechanisms for operations where duplicate execution could create incorrect state or duplicate side effects.
+
+### Idempotency Key Integrity
+
+An idempotency key represents a single logical operation.
+
+If the same key is reused with different request data, the request should be rejected rather than treated as an update. This prevents accidental or malicious reuse of an idempotency key from causing unexpected side effects.
+
+### Concurrent Idempotent Requests
+
+If an idempotency key is already associated with an in-progress operation, subsequent requests must not execute the operation again.
+
+They should observe the existing operation state and receive the final result only after the original operation completes.
+
+### File Storage
+
+Original documents are stored in Amazon S3.
+PostgreSQL stores document metadata and the S3 object key rather than storing the binary file itself.
 
 ## Repository Structure
 
