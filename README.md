@@ -51,6 +51,11 @@ pending → processing → ready
 
 The document status allows the system to track where each document is in the processing pipeline.
 
+### Failure Recovery
+
+Document processing must account for server crashes and interrupted jobs.
+A document should not remain permanently stuck in `processing` if its processing job fails or the worker crashes.
+
 ## Repository Structure
 
 ```text
