@@ -100,23 +100,6 @@ ai-enterprise-knowledge-platform/
 └── .gitignore
 ```
 
-## Current Progress
-
-- [x] Repository initialized
-- [x] Project structure created
-- [ ] Document validation
-- [ ] Document upload API
-- [ ] Document persistence
-- [ ] Asynchronous document processing
-- [ ] Authentication and authorization
-- [ ] Search
-- [ ] RAG pipeline
-- [ ] AI assistant
-- [ ] Testing
-- [ ] Observability
-- [ ] AWS deployment
-- [ ] CI/CD
-
 ## Engineering Principles
 
 This project is being built with a production-first mindset.
@@ -131,3 +114,25 @@ For each major feature, we consider:
 6. Scalability
 7. Maintainability
 8. Engineering trade-offs
+
+## Runtime & Operations
+
+The backend runs as a Node.js process and uses runtime configuration rather than hard-coded environment-specific values.
+
+Key operational concepts:
+
+- Node.js process can be inspected using process-level information.
+- Environment variables are used for runtime configuration.
+- Secrets should not be hard-coded in source code.
+- Linux CLI commands can be used to inspect files, processes, and logs.
+- `grep` can be used to search logs for specific errors.
+- `tail -f` can be used to follow logs as they are written.
+- As the system scales to multiple backend instances, centralized logging becomes useful for troubleshooting across instances.
+
+### Troubleshooting approach
+
+1. Check whether the backend process is running.
+2. Inspect application logs.
+3. Search logs for relevant errors.
+4. Check runtime configuration/environment variables.
+5. For multiple instances, use centralized logging to investigate across instances.
