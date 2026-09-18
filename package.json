@@ -20,5 +20,9 @@
   "bugs": {
     "url": "https://github.com/AbhiRami007/ai-enterprise-knowledge-platform/issues"
   },
-  "homepage": "https://github.com/AbhiRami007/ai-enterprise-knowledge-platform#readme"
+  "homepage": "https://github.com/AbhiRami007/ai-enterprise-knowledge-platform#readme",
+  "devDependencies": {
+    "@types/node": "^26.6.1",
+    "typescript": "^7.0.2"
+  }
 }
