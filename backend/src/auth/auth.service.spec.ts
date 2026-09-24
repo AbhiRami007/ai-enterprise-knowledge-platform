@@ -10,7 +10,8 @@ describe("AuthService", () => {
   const mockResolvedData = {
     id: "user-1",
     email: "user@example.com",
-    passwordHash: "hashed-password",
+    passwordHash:
+      "$2b$10$W7DTvZWql1xSPSj0NP37Ge8DaMY.aJowV2/7dZ5i3W5snny2pg0KO",
     role: "viewer",
     tenantId: "tenant-1",
   };
@@ -56,6 +57,14 @@ describe("AuthService", () => {
     mockUserRepository.findByEmail.mockResolvedValue(null);
 
     const result = await service.login("user@example.com", "Password123!");
+
+    expect(result).toBe(null);
+  });
+
+  it("should reject invalid passwords", async () => {
+    mockUserRepository.findByEmail.mockResolvedValue(mockResolvedData);
+
+    const result = await service.login("user@example.com", "WrongPassword!");
 
     expect(result).toBe(null);
   });
