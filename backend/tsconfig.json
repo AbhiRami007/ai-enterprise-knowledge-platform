@@ -5,6 +5,7 @@
     "target": "ES2022",
     "lib": ["ES2022"],
     "types": ["node"],
+    "isolatedModules": true,
     "strict": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
