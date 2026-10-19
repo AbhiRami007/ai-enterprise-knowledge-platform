@@ -2,6 +2,137 @@
 
 An enterprise knowledge platform that allows organizations to upload internal documents, process them asynchronously, search company knowledge, and ask an AI assistant questions grounded in those documents.
 
+## Current Status
+
+The project is in early development. What exists today:
+
+| Area | Status |
+| --- | --- |
+| NestJS backend skeleton + Swagger docs | ✅ Done |
+| PostgreSQL via Docker Compose + TypeORM | ✅ Done |
+| Email/password login issuing a JWT (`POST /api/v1/auth/login`) | ✅ Done |
+| Documents API (`GET /api/v1/documents/:id`) | 🚧 Stub data, not yet guarded by auth |
+| Document upload, S3 storage, async processing | ⏳ Planned |
+| Redis, Kafka / SQS | ⏳ Planned |
+| AI service (`ai-service/`), RAG | ⏳ Planned |
+| Frontend (`frontend/`) | ⏳ Planned |
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js (recent LTS) and npm
+- Docker and Docker Compose
+
+### 1. Configure environment variables
+
+Create a `.env` file in the **repository root** (read by Docker Compose and, as a fallback, by the backend):
+
+```env
+POSTGRES_PASSWORD=change-me
+```
+
+Create `backend/.env`:
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_USERNAME=app_user
+DB_PASSWORD=change-me          # must match POSTGRES_PASSWORD
+DB_DATABASE=knowledge_platform
+JWT_SECRET=a-long-random-string
+```
+
+| Variable | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `POSTGRES_PASSWORD` | Yes | – | Password for the Postgres container's `app_user` |
+| `DB_HOST` | No | `localhost` | Postgres host |
+| `DB_PORT` | No | `5432` | Postgres port |
+| `DB_USERNAME` | No | `app_user` | Postgres user |
+| `DB_PASSWORD` | Yes | – | Postgres password used by the backend |
+| `DB_DATABASE` | No | `knowledge_platform` | Database name |
+| `JWT_SECRET` | Yes | – | Secret used to sign access tokens |
+
+`.env` files are git-ignored. Never commit real secrets.
+
+### 2. Start PostgreSQL
+
+```bash
+docker compose up -d
+docker compose ps   # wait until postgres is "healthy"
+```
+
+Postgres is bound to `127.0.0.1:5432` only, and data persists in the `postgres_data` volume.
+
+### 3. Create the schema
+
+TypeORM runs with `synchronize: false` and there are no migrations yet, so create the `users` table manually:
+
+```bash
+docker exec -it knowledge-platform-postgres psql -U app_user -d knowledge_platform
+```
+
+```sql
+CREATE TABLE IF NOT EXISTS users (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email         VARCHAR NOT NULL UNIQUE,
+  password_hash VARCHAR NOT NULL,
+  role          VARCHAR NOT NULL,
+  tenant_id     VARCHAR NOT NULL
+);
+```
+
+To seed a test user, generate a bcrypt hash from the `backend/` directory:
+
+```bash
+node -e "import('bcryptjs').then(b => console.log(b.hashSync('Password123!', 10)))"
+```
+
+Then insert it:
+
+```sql
+INSERT INTO users (email, password_hash, role, tenant_id)
+VALUES ('user@example.com', '<hash from above>', 'admin', 'tenant-1');
+```
+
+### 4. Run the backend
+
+```bash
+cd backend
+npm install
+npm run start:dev
+```
+
+The API runs at <http://localhost:3000> and Swagger UI at <http://localhost:3000/api/docs>.
+
+### Backend scripts
+
+| Command | Description |
+| --- | --- |
+| `npm run start` | Start the app |
+| `npm run start:dev` | Start in watch mode |
+| `npm run build` | Compile to `dist/` |
+| `npm test` | Run Jest unit tests (SWC, ESM) |
+
+## API
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/` | Health / banner text |
+| `POST` | `/api/v1/auth/login` | Exchange email + password for a JWT |
+| `GET` | `/api/v1/documents/:id` | Get a document by ID (stub) |
+
+Example login:
+
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"Password123!"}'
+# → { "accessToken": "<jwt>" }
+```
+
+Responses: `200` with an access token, `400` if email or password is missing, `401` for invalid credentials. Tokens expire after **15 minutes** and carry `sub` (user ID), `role` and `tenantId` claims.
+
 ## Project Goal
 
 Build a production-oriented full-stack system demonstrating:
@@ -92,10 +223,17 @@ PostgreSQL stores document metadata and the S3 object key rather than storing th
 
 ```text
 ai-enterprise-knowledge-platform/
-├── frontend/
-├── backend/
-├── ai-service/
-├── docs/
+├── backend/                 # NestJS API (TypeScript, ESM)
+│   └── src/
+│       ├── main.ts          # Bootstrap + Swagger setup
+│       ├── app.module.ts    # Config + TypeORM wiring
+│       ├── auth/            # Login endpoint, JWT issuing
+│       ├── users/           # User entity + repository
+│       └── documents/       # Documents API (stub)
+├── ai-service/              # Python / FastAPI AI service (planned)
+├── frontend/                # React + TypeScript UI (planned)
+├── docs/                    # Design docs
+├── docker-compose.yml       # Local PostgreSQL
 ├── README.md
 └── .gitignore
 ```
