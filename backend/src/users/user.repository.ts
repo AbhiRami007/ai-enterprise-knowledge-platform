@@ -17,4 +17,8 @@ export class UserRepository {
   findById(id: string): Promise<User | null> {
     return this.repository.findOneBy({ id });
   }
+
+  async updatePasswordHash(id: string, passwordHash: string) {
+    await this.repository.update({ id }, { passwordHash });
+  }
 }

@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Patch,
   Post,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -17,6 +18,7 @@ import {
 import { AuthService } from "./auth.service.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { RefreshTokenDto } from "./dto/refresh-token.dto.js";
+import { ChangePasswordDto } from "./dto/change-password.dto.js";
 import { TokenResponseDto } from "./dto/token-response.dto.js";
 import { Public } from "./decorators/public.decorator.js";
 import { CurrentUser } from "./decorators/current-user.decorator.js";
@@ -106,6 +108,34 @@ export class AuthController {
   })
   async logoutAll(@CurrentUser() user: JwtPayload) {
     await this.authService.logoutAll(user.sub);
+  }
+
+  @Patch("password")
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Change the logged-in user's password",
+    description:
+      "Revokes every refresh token for the user and returns a new pair for this session.",
+  })
+  @ApiOkResponse({
+    type: TokenResponseDto,
+  })
+  @ApiBadRequestResponse({
+    description:
+      "Current password incorrect, or new password invalid or unchanged",
+  })
+  @ApiUnauthorizedResponse({
+    description: "Missing or invalid access token",
+  })
+  changePassword(
+    @CurrentUser() user: JwtPayload,
+    @Body() body: ChangePasswordDto
+  ) {
+    return this.authService.changePassword(
+      user.sub,
+      body.currentPassword,
+      body.newPassword
+    );
   }
 
   @Get("me")

@@ -1,7 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuthService } from "./auth.service.js";
 import { beforeEach, describe, expect, it, jest } from "@jest/globals";
-import { UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, UnauthorizedException } from "@nestjs/common";
+import * as bcrypt from "bcryptjs";
 import { Role } from "../users/enums/role.enum.js";
 import { UserRepository } from "../users/user.repository.js";
 import { TokensService } from "./tokens.service.js";
@@ -33,6 +34,8 @@ describe("AuthService", () => {
       jest.fn<(email: string) => Promise<typeof mockResolvedData | null>>(),
     findById:
       jest.fn<(id: string) => Promise<typeof mockResolvedData | null>>(),
+    updatePasswordHash:
+      jest.fn<(id: string, passwordHash: string) => Promise<void>>(),
   };
 
   const mockTokensService = {
@@ -117,5 +120,41 @@ describe("AuthService", () => {
     await expect(service.getProfile("user-1")).rejects.toThrow(
       UnauthorizedException
     );
+  });
+
+  describe("changePassword", () => {
+    beforeEach(() => {
+      mockUserRepository.findById.mockResolvedValue(mockResolvedData);
+      mockUserRepository.updatePasswordHash.mockClear();
+      mockTokensService.revokeAllForUser.mockClear();
+      mockTokensService.issue.mockResolvedValue(mockTokens);
+    });
+
+    it("should store a new hash, end other sessions and return new tokens", async () => {
+      const result = await service.changePassword(
+        "user-1",
+        "Password123!",
+        "a-longer-passphrase"
+      );
+
+      const [, newHash] = mockUserRepository.updatePasswordHash.mock.calls[0];
+      expect(await bcrypt.compare("a-longer-passphrase", newHash)).toBe(true);
+      expect(mockTokensService.revokeAllForUser).toHaveBeenCalledWith("user-1");
+      expect(result).toBe(mockTokens);
+    });
+
+    it("should reject an incorrect current password", async () => {
+      await expect(
+        service.changePassword("user-1", "WrongPassword!", "a-longer-passphrase")
+      ).rejects.toThrow(BadRequestException);
+      expect(mockUserRepository.updatePasswordHash).not.toHaveBeenCalled();
+    });
+
+    it("should reject reusing the current password", async () => {
+      await expect(
+        service.changePassword("user-1", "Password123!", "Password123!")
+      ).rejects.toThrow(BadRequestException);
+      expect(mockUserRepository.updatePasswordHash).not.toHaveBeenCalled();
+    });
   });
 });

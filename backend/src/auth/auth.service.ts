@@ -1,7 +1,12 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { UserRepository } from "../users/user.repository.js";
 import * as bcrypt from "bcryptjs";
 import { UserResponseDto } from "../users/dto/user-response.dto.js";
+import { hashPassword } from "../users/password.js";
 import { TokensService } from "./tokens.service.js";
 
 // Compared against when the email is unknown, so response time doesn't reveal which emails exist.
@@ -40,6 +45,37 @@ export class AuthService {
 
   logoutAll(userId: string) {
     return this.tokensService.revokeAllForUser(userId);
+  }
+
+  // Ends every other session and returns a fresh token pair for the caller.
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string
+  ) {
+    const user = await this.userRepository.findById(userId);
+
+    if (!user || !user.isActive) {
+      throw new UnauthorizedException();
+    }
+
+    if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
+      throw new BadRequestException("Current password is incorrect");
+    }
+
+    if (currentPassword === newPassword) {
+      throw new BadRequestException(
+        "New password must differ from the current one"
+      );
+    }
+
+    await this.userRepository.updatePasswordHash(
+      user.id,
+      await hashPassword(newPassword)
+    );
+    await this.tokensService.revokeAllForUser(user.id);
+
+    return this.tokensService.issue(user);
   }
 
   async getProfile(userId: string) {

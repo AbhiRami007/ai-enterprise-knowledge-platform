@@ -13,6 +13,8 @@ describe("AuthController", () => {
     refresh: jest.fn<(refreshToken: string) => Promise<object | null>>(),
     logout: jest.fn<(refreshToken: string) => Promise<void>>(),
     logoutAll: jest.fn<(userId: string) => Promise<void>>(),
+    changePassword:
+      jest.fn<(userId: string, current: string, next: string) => Promise<object>>(),
     getProfile: jest.fn<(userId: string) => Promise<object>>(),
   };
 
@@ -89,5 +91,21 @@ describe("AuthController", () => {
     await controller.logoutAll(user);
 
     expect(mockAuthService.logoutAll).toHaveBeenCalledWith("user-1");
+  });
+
+  it("should change the password of the current user", async () => {
+    mockAuthService.changePassword.mockResolvedValue({ accessToken: "New-JWT" });
+
+    const result = await controller.changePassword(user, {
+      currentPassword: "Password123!",
+      newPassword: "a-longer-passphrase",
+    });
+
+    expect(result).toEqual({ accessToken: "New-JWT" });
+    expect(mockAuthService.changePassword).toHaveBeenCalledWith(
+      "user-1",
+      "Password123!",
+      "a-longer-passphrase"
+    );
   });
 });
