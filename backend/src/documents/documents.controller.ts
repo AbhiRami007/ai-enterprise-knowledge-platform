@@ -1,13 +1,14 @@
-import { Controller, Get, Inject, Param } from "@nestjs/common";
+import { Controller, Get, Param } from "@nestjs/common";
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
-  ApiParam,
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
 import { DocumentsService } from "./documents.service.js";
+import { DocumentIdParamDto } from "./dto/document-id-param.dto.js";
 
 @Controller("api/v1/documents")
 @ApiBearerAuth()
@@ -17,13 +18,11 @@ export class DocumentsController {
   @ApiOperation({
     summary: "Get a document by ID",
   })
-  @ApiParam({
-    name: "id",
-    description: "Document ID",
-    example: "doc-123",
-  })
   @ApiOkResponse({
     description: "Document retrieved successfully",
+  })
+  @ApiBadRequestResponse({
+    description: "ID is not a valid UUID",
   })
   @ApiUnauthorizedResponse({
     description: "Missing or invalid authentication",
@@ -31,7 +30,7 @@ export class DocumentsController {
   @ApiNotFoundResponse({
     description: "Document not found",
   })
-  getDocument(@Param("id") id: string) {
+  getDocument(@Param() { id }: DocumentIdParamDto) {
     return this.documentService.getDocumentById(id);
   }
 }

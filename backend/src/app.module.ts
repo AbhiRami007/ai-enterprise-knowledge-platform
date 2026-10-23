@@ -15,11 +15,11 @@ import { AuthModule } from "./auth/auth.module.js";
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: "postgres" as const,
-        host: config.get<string>("DB_HOST", "localhost"),
-        port: Number(config.get<string>("DB_PORT", "5432")),
-        username: config.get<string>("DB_USERNAME", "app_user"),
+        host: config.get<string>("DB_HOST"),
+        port: Number(config.get<string>("DB_PORT")),
+        username: config.get<string>("DB_USERNAME"),
         password: config.getOrThrow<string>("DB_PASSWORD"),
-        database: config.get<string>("DB_DATABASE", "knowledge_platform"),
+        database: config.get<string>("DB_DATABASE"),
         autoLoadEntities: true,
         // Dev only: auto-create tables from entities. Keep false in production (use migrations).
         synchronize: config.get<string>("DB_SYNC") === "true",
