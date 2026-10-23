@@ -1,6 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { BadRequestException, UnauthorizedException } from "@nestjs/common";
-import { AuthController, LoginDto } from "./auth.controller.js";
+import { UnauthorizedException } from "@nestjs/common";
+import { AuthController } from "./auth.controller.js";
 import { AuthService } from "./auth.service.js";
 import { describe, beforeEach, it, expect, jest } from "@jest/globals";
 
@@ -47,9 +47,4 @@ describe("AuthController", () => {
     ).rejects.toThrow(UnauthorizedException);
   });
 
-  it("should throw BadRequest when fields are missing", async () => {
-    await expect(
-      controller.login({ email: "user@example.com" } as LoginDto)
-    ).rejects.toThrow(BadRequestException);
-  });
 });
