@@ -1,10 +1,19 @@
 import "reflect-metadata";
+import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module.js";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // strip properties without validation decorators
+      forbidNonWhitelisted: true, // reject requests that send unknown properties
+      transform: true, // turn plain JSON into DTO class instances
+    })
+  );
 
   const config = new DocumentBuilder()
     .setTitle("AI Enterprise Knowledge Platform API")
