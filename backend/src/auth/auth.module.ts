@@ -8,6 +8,7 @@ import { AuthController } from "./auth.controller.js";
 import { UsersModule } from "../users/users.module.js";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard.js";
 import { RolesGuard } from "./guards/roles.guard.js";
+import { RateLimitGuard } from "./guards/rate-limit.guard.js";
 import { RefreshToken } from "./entities/refresh-token.entity.js";
 import { ACCESS_TOKEN_TTL_SECONDS, TokensService } from "./tokens.service.js";
 
@@ -28,7 +29,8 @@ import { ACCESS_TOKEN_TTL_SECONDS, TokensService } from "./tokens.service.js";
   providers: [
     AuthService,
     TokensService,
-    // Order matters: RolesGuard reads the user that JwtAuthGuard attaches.
+    // Order matters: rate limits apply before auth, and RolesGuard reads the user that JwtAuthGuard attaches.
+    { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],

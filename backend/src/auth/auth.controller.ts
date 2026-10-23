@@ -13,6 +13,7 @@ import {
   ApiNoContentResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
 import { AuthService } from "./auth.service.js";
@@ -22,14 +23,19 @@ import { ChangePasswordDto } from "./dto/change-password.dto.js";
 import { TokenResponseDto } from "./dto/token-response.dto.js";
 import { Public } from "./decorators/public.decorator.js";
 import { CurrentUser } from "./decorators/current-user.decorator.js";
+import { RateLimit } from "./decorators/rate-limit.decorator.js";
 import type { JwtPayload } from "./types/jwt-payload.js";
 import { UserResponseDto } from "../users/dto/user-response.dto.js";
+
+// Slows down password guessing: 5 attempts per minute per IP.
+const PASSWORD_ATTEMPT_LIMIT = { limit: 5, windowMs: 60_000 };
 
 @Controller("api/v1/auth")
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Public()
+  @RateLimit(PASSWORD_ATTEMPT_LIMIT)
   @Post("login")
   @HttpCode(200)
   @ApiOperation({
@@ -44,6 +50,9 @@ export class AuthController {
   })
   @ApiUnauthorizedResponse({
     description: "Invalid credentials",
+  })
+  @ApiTooManyRequestsResponse({
+    description: "Too many login attempts",
   })
   // Input shape is validated by the global ValidationPipe before this runs.
   async login(@Body() body: LoginDto) {
@@ -110,6 +119,7 @@ export class AuthController {
     await this.authService.logoutAll(user.sub);
   }
 
+  @RateLimit(PASSWORD_ATTEMPT_LIMIT)
   @Patch("password")
   @ApiBearerAuth()
   @ApiOperation({

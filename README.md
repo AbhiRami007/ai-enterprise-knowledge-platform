@@ -143,9 +143,10 @@ How it works:
 - **Logout** revokes the refresh token and always returns `204`. The current access token stays valid until it expires (at most 15 minutes).
 - **Changing the password** revokes all refresh tokens and returns a new pair for the current session.
 - Login responses take the same time whether or not the email exists, and disabled users (`is_active = false`) can't log in or refresh.
+- Login and password change are limited to **5 attempts per minute per IP** (`429` with `Retry-After`). Counts are kept in memory per instance; they'll move to Redis when the backend runs on multiple instances.
 - Passwords are hashed with bcrypt (12 rounds). New passwords must be 12–72 characters (bcrypt ignores bytes past 72).
 
-Common responses: `400` invalid input, `401` missing/invalid credentials or token, `403` wrong role, `409` email already in use.
+Common responses: `400` invalid input, `401` missing/invalid credentials or token, `403` wrong role, `409` email already in use, `429` too many attempts.
 
 ## Project Goal
 
