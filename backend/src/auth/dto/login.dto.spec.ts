@@ -1,23 +1,52 @@
-import { describe, it, expect } from "@jest/globals";
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
+import { describe, it, expect } from "@jest/globals";
 import { LoginDto } from "./login.dto.js";
 
-async function errorsFor(body: object) {
-  const errors = await validate(plainToInstance(LoginDto, body));
-  return errors.map((e) => e.property);
-}
+const toDto = (body: object) => plainToInstance(LoginDto, body);
 
 describe("LoginDto", () => {
-  it("accepts a valid email and password", async () => {
-    expect(await errorsFor({ email: "user@example.com", password: "Password123!" })).toEqual([]);
+  it("should accept a valid email and password", async () => {
+    const errors = await validate(
+      toDto({ email: "user@example.com", password: "Password123!" })
+    );
+
+    expect(errors).toHaveLength(0);
   });
 
-  it("rejects a missing password", async () => {
-    expect(await errorsFor({ email: "user@example.com" })).toContain("password");
+  it("should trim and lowercase the email", () => {
+    const dto = toDto({ email: "  User@Example.COM ", password: "x" });
+
+    expect(dto.email).toBe("user@example.com");
   });
 
-  it("rejects an invalid email", async () => {
-    expect(await errorsFor({ email: "not-an-email", password: "x" })).toContain("email");
+  it("should reject a missing password", async () => {
+    const errors = await validate(toDto({ email: "user@example.com" }));
+
+    expect(errors.map((e) => e.property)).toEqual(["password"]);
+  });
+
+  it("should reject an invalid email", async () => {
+    const errors = await validate(
+      toDto({ email: "not-an-email", password: "Password123!" })
+    );
+
+    expect(errors.map((e) => e.property)).toEqual(["email"]);
+  });
+
+  it("should reject a password longer than 72 characters", async () => {
+    const errors = await validate(
+      toDto({ email: "user@example.com", password: "a".repeat(73) })
+    );
+
+    expect(errors.map((e) => e.property)).toEqual(["password"]);
+  });
+
+  it("should reject an email longer than 254 characters", async () => {
+    const errors = await validate(
+      toDto({ email: `${"a".repeat(250)}@x.io`, password: "Password123!" })
+    );
+
+    expect(errors.map((e) => e.property)).toEqual(["email"]);
   });
 });

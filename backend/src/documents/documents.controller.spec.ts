@@ -19,7 +19,9 @@ describe("DocumentsController", () => {
   });
 
   it("should return the document from the service", () => {
-    expect(controller.getDocument("doc-123")).toEqual({ id: "doc-123" });
-    expect(mockDocumentsService.getDocumentById).toHaveBeenCalledWith("doc-123");
+    const id = "3f2c8a1e-9b4d-4c6a-8e2f-1a7b5d9c0e34";
+
+    expect(controller.getDocument({ id })).toEqual({ id: "doc-123" });
+    expect(mockDocumentsService.getDocumentById).toHaveBeenCalledWith(id);
   });
 });

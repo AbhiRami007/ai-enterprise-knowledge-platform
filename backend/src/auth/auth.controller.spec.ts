@@ -46,5 +46,4 @@ describe("AuthController", () => {
       })
     ).rejects.toThrow(UnauthorizedException);
   });
-
 });
