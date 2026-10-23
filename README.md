@@ -9,9 +9,11 @@ The project is in early development. What exists today:
 | Area | Status |
 | --- | --- |
 | NestJS backend skeleton + Swagger docs | ✅ Done |
-| PostgreSQL via Docker Compose + TypeORM | ✅ Done |
-| Email/password login issuing a JWT (`POST /api/v1/auth/login`) | ✅ Done |
-| Documents API (`GET /api/v1/documents/:id`) | 🚧 Stub data, not yet guarded by auth |
+| PostgreSQL (pgvector) via Docker Compose + TypeORM | ✅ Done |
+| Request validation with DTOs (`class-validator`) | ✅ Done |
+| Auth: login, rotating refresh tokens, logout, change password, `/me` | ✅ Done |
+| Roles (`admin`, `editor`, `viewer`) and admin user creation | ✅ Done |
+| Documents API (`GET /api/v1/documents/:id`) | 🚧 Requires auth, still returns stub data |
 | Document upload, S3 storage, async processing | ⏳ Planned |
 | Redis, Kafka / SQS | ⏳ Planned |
 | AI service (`ai-service/`), RAG | ⏳ Planned |
@@ -26,32 +28,22 @@ The project is in early development. What exists today:
 
 ### 1. Configure environment variables
 
-Create a `.env` file in the **repository root** (read by Docker Compose and, as a fallback, by the backend):
+Copy `.env.example` to `.env` in the **repository root**. Docker Compose and the backend both read it.
 
-```env
-POSTGRES_PASSWORD=change-me
-```
-
-Create `backend/.env`:
-
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=app_user
-DB_PASSWORD=change-me          # must match POSTGRES_PASSWORD
-DB_DATABASE=knowledge_platform
-JWT_SECRET=a-long-random-string
+```bash
+cp .env.example .env
 ```
 
 | Variable | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `POSTGRES_PASSWORD` | Yes | – | Password for the Postgres container's `app_user` |
 | `DB_HOST` | No | `localhost` | Postgres host |
 | `DB_PORT` | No | `5432` | Postgres port |
 | `DB_USERNAME` | No | `app_user` | Postgres user |
-| `DB_PASSWORD` | Yes | – | Postgres password used by the backend |
+| `DB_PASSWORD` | Yes | – | Postgres password (used by the container and the backend) |
 | `DB_DATABASE` | No | `knowledge_platform` | Database name |
-| `JWT_SECRET` | Yes | – | Secret used to sign access tokens |
+| `DB_SYNC` | No | `false` | `true` creates tables from entities on startup. Dev only. |
+| `JWT_SECRET` | Yes | – | Secret used to sign access tokens. Use a long random string. |
+| `REFRESH_TOKEN_TTL_DAYS` | No | `7` | Refresh token lifetime |
 
 `.env` files are git-ignored. Never commit real secrets.
 
@@ -62,40 +54,29 @@ docker compose up -d
 docker compose ps   # wait until postgres is "healthy"
 ```
 
-Postgres is bound to `127.0.0.1:5432` only, and data persists in the `postgres_data` volume.
+Postgres is bound to `127.0.0.1:5432` only, and data persists in the `postgres_data` volume. The `vector` and `pgcrypto` extensions are enabled on first start.
 
 ### 3. Create the schema
 
-TypeORM runs with `synchronize: false` and there are no migrations yet, so create the `users` table manually:
+There are no migrations yet. For local development set `DB_SYNC=true` and the backend creates the tables (`users`, `refresh_tokens`, `documents`) on startup.
+
+> Upgrading from an older checkout? `users.tenant_id` is now a `uuid`. Reset the dev database with `docker compose down -v` before starting again.
+
+### 4. Create the first admin
+
+Users are created by admins, so seed one admin per tenant:
 
 ```bash
-docker exec -it knowledge-platform-postgres psql -U app_user -d knowledge_platform
+cd backend
+SEED_ADMIN_EMAIL=admin@example.com \
+SEED_ADMIN_PASSWORD='a-long-passphrase' \
+npm run seed:admin
+# → Created admin admin@example.com in tenant <uuid>
 ```
 
-```sql
-CREATE TABLE IF NOT EXISTS users (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email         VARCHAR NOT NULL UNIQUE,
-  password_hash VARCHAR NOT NULL,
-  role          VARCHAR NOT NULL,
-  tenant_id     VARCHAR NOT NULL
-);
-```
+Set `SEED_TENANT_ID=<uuid>` to add the admin to an existing tenant; otherwise a new tenant ID is generated. Running it again for an existing email does nothing.
 
-To seed a test user, generate a bcrypt hash from the `backend/` directory:
-
-```bash
-node -e "import('bcryptjs').then(b => console.log(b.hashSync('Password123!', 10)))"
-```
-
-Then insert it:
-
-```sql
-INSERT INTO users (email, password_hash, role, tenant_id)
-VALUES ('user@example.com', '<hash from above>', 'admin', 'tenant-1');
-```
-
-### 4. Run the backend
+### 5. Run the backend
 
 ```bash
 cd backend
@@ -112,26 +93,59 @@ The API runs at <http://localhost:3000> and Swagger UI at <http://localhost:3000
 | `npm run start` | Start the app |
 | `npm run start:dev` | Start in watch mode |
 | `npm run build` | Compile to `dist/` |
+| `npm run seed:admin` | Create a tenant admin (see above) |
 | `npm test` | Run Jest unit tests (SWC, ESM) |
 
 ## API
 
-| Method | Path | Description |
-| --- | --- | --- |
-| `GET` | `/` | Health / banner text |
-| `POST` | `/api/v1/auth/login` | Exchange email + password for a JWT |
-| `GET` | `/api/v1/documents/:id` | Get a document by ID (stub) |
+Every route requires `Authorization: Bearer <accessToken>` unless marked public.
 
-Example login:
+| Method | Path | Auth | Description |
+| --- | --- | --- | --- |
+| `GET` | `/` | Public | Health / banner text |
+| `POST` | `/api/v1/auth/login` | Public | Email + password → access and refresh tokens |
+| `POST` | `/api/v1/auth/refresh` | Public | Refresh token → new token pair |
+| `POST` | `/api/v1/auth/logout` | Public | Revoke a refresh token |
+| `POST` | `/api/v1/auth/logout-all` | Bearer | Revoke every session of the current user |
+| `PATCH` | `/api/v1/auth/password` | Bearer | Change password (ends other sessions) |
+| `GET` | `/api/v1/auth/me` | Bearer | Current user's profile |
+| `POST` | `/api/v1/users` | Bearer, admin | Create a user in the admin's tenant |
+| `GET` | `/api/v1/documents/:id` | Bearer | Get a document by UUID (stub) |
+
+### Authentication flow
 
 ```bash
+# Log in
 curl -X POST http://localhost:3000/api/v1/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"email":"user@example.com","password":"Password123!"}'
-# → { "accessToken": "<jwt>" }
+  -d '{"email":"admin@example.com","password":"a-long-passphrase"}'
+# → { "accessToken": "<jwt>", "refreshToken": "<opaque>", "tokenType": "Bearer", "expiresIn": 900 }
+
+# Call a protected route
+curl http://localhost:3000/api/v1/auth/me -H "Authorization: Bearer <jwt>"
+
+# When the access token expires, get a new pair
+curl -X POST http://localhost:3000/api/v1/auth/refresh \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken":"<opaque>"}'
+
+# Log out
+curl -X POST http://localhost:3000/api/v1/auth/logout \
+  -H "Content-Type: application/json" \
+  -d '{"refreshToken":"<opaque>"}'
 ```
 
-Responses: `200` with an access token, `400` if email or password is missing, `401` for invalid credentials. Tokens expire after **15 minutes** and carry `sub` (user ID), `role` and `tenantId` claims.
+How it works:
+
+- **Access tokens** are JWTs valid for **15 minutes**, carrying `sub` (user ID), `role` and `tenantId`. They are not stored, so they can't be revoked early; that's why they are short-lived.
+- **Refresh tokens** are random 256-bit strings valid for 7 days. Only their SHA-256 hash is stored in `refresh_tokens`.
+- Refresh tokens are **single-use**: each refresh revokes the old token and issues a new pair. If an already-used token is presented again, it's treated as stolen and **every session for that user is revoked**.
+- **Logout** revokes the refresh token and always returns `204`. The current access token stays valid until it expires (at most 15 minutes).
+- **Changing the password** revokes all refresh tokens and returns a new pair for the current session.
+- Login responses take the same time whether or not the email exists, and disabled users (`is_active = false`) can't log in or refresh.
+- Passwords are hashed with bcrypt (12 rounds). New passwords must be 12–72 characters (bcrypt ignores bytes past 72).
+
+Common responses: `400` invalid input, `401` missing/invalid credentials or token, `403` wrong role, `409` email already in use.
 
 ## Project Goal
 
@@ -227,8 +241,9 @@ ai-enterprise-knowledge-platform/
 │   └── src/
 │       ├── main.ts          # Bootstrap + Swagger setup
 │       ├── app.module.ts    # Config + TypeORM wiring
-│       ├── auth/            # Login endpoint, JWT issuing
-│       ├── users/           # User entity + repository
+│       ├── auth/            # Login, tokens, guards (JWT + roles), decorators
+│       ├── users/           # User entity, roles, admin user creation
+│       ├── scripts/         # seed-admin.ts
 │       └── documents/       # Documents API (stub)
 ├── ai-service/              # Python / FastAPI AI service (planned)
 ├── frontend/                # React + TypeScript UI (planned)

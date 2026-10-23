@@ -21,4 +21,8 @@ export class UserRepository {
   async updatePasswordHash(id: string, passwordHash: string) {
     await this.repository.update({ id }, { passwordHash });
   }
+
+  create(data: Pick<User, "email" | "passwordHash" | "role" | "tenantId">) {
+    return this.repository.save(this.repository.create(data));
+  }
 }
