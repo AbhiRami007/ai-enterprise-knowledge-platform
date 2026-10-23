@@ -4,16 +4,16 @@ services:
     container_name: knowledge-platform-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_DB: knowledge_platform
-      POSTGRES_USER: app_user
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${DB_DATABASE:-knowledge_platform}
+      POSTGRES_USER: ${DB_USERNAME:-app_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./db/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app_user -d knowledge_platform"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 5
