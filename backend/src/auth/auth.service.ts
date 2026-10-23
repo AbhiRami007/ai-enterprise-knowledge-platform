@@ -1,9 +1,8 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { UserRepository } from "../users/user.repository.js";
-import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcryptjs";
 import { UserResponseDto } from "../users/dto/user-response.dto.js";
-import type { JwtPayload } from "./types/jwt-payload.js";
+import { TokensService } from "./tokens.service.js";
 
 // Compared against when the email is unknown, so response time doesn't reveal which emails exist.
 const DUMMY_PASSWORD_HASH =
@@ -13,7 +12,7 @@ const DUMMY_PASSWORD_HASH =
 export class AuthService {
   constructor(
     private readonly userRepository: UserRepository,
-    private readonly jwtService: JwtService
+    private readonly tokensService: TokensService
   ) {}
 
   async login(email: string, password: string) {
@@ -28,13 +27,19 @@ export class AuthService {
       return null;
     }
 
-    const payload: JwtPayload = {
-      sub: user.id,
-      role: user.role,
-      tenantId: user.tenantId,
-    };
+    return this.tokensService.issue(user);
+  }
 
-    return this.jwtService.sign(payload);
+  refresh(refreshToken: string) {
+    return this.tokensService.rotate(refreshToken);
+  }
+
+  logout(refreshToken: string) {
+    return this.tokensService.revoke(refreshToken);
+  }
+
+  logoutAll(userId: string) {
+    return this.tokensService.revokeAllForUser(userId);
   }
 
   async getProfile(userId: string) {

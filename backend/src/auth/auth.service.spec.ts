@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { UnauthorizedException } from "@nestjs/common";
 import { Role } from "../users/enums/role.enum.js";
 import { UserRepository } from "../users/user.repository.js";
-import { JwtService } from "@nestjs/jwt";
+import { TokensService } from "./tokens.service.js";
 
 describe("AuthService", () => {
   let service: AuthService;
@@ -21,7 +21,12 @@ describe("AuthService", () => {
     updatedAt: new Date("2026-01-01T00:00:00Z"),
   };
 
-  const mockJwt = "Valid-JWT";
+  const mockTokens = {
+    accessToken: "Valid-JWT",
+    refreshToken: "refresh-token",
+    tokenType: "Bearer" as const,
+    expiresIn: 900,
+  };
 
   const mockUserRepository = {
     findByEmail:
@@ -30,8 +35,11 @@ describe("AuthService", () => {
       jest.fn<(id: string) => Promise<typeof mockResolvedData | null>>(),
   };
 
-  const mockJwtService = {
-    sign: jest.fn().mockReturnValue(mockJwt),
+  const mockTokensService = {
+    issue: jest.fn<() => Promise<typeof mockTokens>>(),
+    rotate: jest.fn<() => Promise<typeof mockTokens | null>>(),
+    revoke: jest.fn<() => Promise<void>>(),
+    revokeAllForUser: jest.fn<() => Promise<void>>(),
   };
 
   beforeEach(async () => {
@@ -43,8 +51,8 @@ describe("AuthService", () => {
           useValue: mockUserRepository,
         },
         {
-          provide: JwtService,
-          useValue: mockJwtService,
+          provide: TokensService,
+          useValue: mockTokensService,
         },
       ],
     }).compile();
@@ -52,15 +60,16 @@ describe("AuthService", () => {
     service = module.get<AuthService>(AuthService);
   });
 
-  it("should return a JWT for valid credentials", async () => {
+  it("should issue tokens for valid credentials", async () => {
     mockUserRepository.findByEmail.mockResolvedValue(mockResolvedData);
+    mockTokensService.issue.mockResolvedValue(mockTokens);
 
     const result = await service.login("user@example.com", "Password123!");
 
-    expect(result).toBe(mockJwt);
+    expect(result).toBe(mockTokens);
   });
 
-  it("should not return a JWT for invalid credentials", async () => {
+  it("should not issue tokens for an unknown email", async () => {
     mockUserRepository.findByEmail.mockResolvedValue(null);
 
     const result = await service.login("user@example.com", "Password123!");
