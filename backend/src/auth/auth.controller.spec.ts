@@ -3,12 +3,14 @@ import { UnauthorizedException } from "@nestjs/common";
 import { AuthController } from "./auth.controller.js";
 import { AuthService } from "./auth.service.js";
 import { describe, beforeEach, it, expect, jest } from "@jest/globals";
+import { Role } from "../users/enums/role.enum.js";
 
 describe("AuthController", () => {
   let controller: AuthController;
 
   const mockAuthService = {
     login: jest.fn<(email: string, password: string) => Promise<string | null>>(),
+    getProfile: jest.fn<(userId: string) => Promise<object>>(),
   };
 
   beforeEach(async () => {
@@ -45,5 +47,18 @@ describe("AuthController", () => {
         password: "WrongPassword!",
       })
     ).rejects.toThrow(UnauthorizedException);
+  });
+
+  it("should return the profile of the logged-in user", async () => {
+    mockAuthService.getProfile.mockResolvedValue({ id: "user-1" });
+
+    const result = await controller.me({
+      sub: "user-1",
+      role: Role.Viewer,
+      tenantId: "tenant-1",
+    });
+
+    expect(result).toEqual({ id: "user-1" });
+    expect(mockAuthService.getProfile).toHaveBeenCalledWith("user-1");
   });
 });
