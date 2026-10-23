@@ -21,7 +21,8 @@ import { AuthModule } from "./auth/auth.module.js";
         password: config.getOrThrow<string>("DB_PASSWORD"),
         database: config.get<string>("DB_DATABASE", "knowledge_platform"),
         autoLoadEntities: true,
-        synchronize: false,
+        // Dev only: auto-create tables from entities. Keep false in production (use migrations).
+        synchronize: config.get<string>("DB_SYNC") === "true",
       }),
     }),
     DocumentsModule,
