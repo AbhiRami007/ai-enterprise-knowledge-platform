@@ -1,5 +1,7 @@
+import LoginPage from "./features/auth/LoginPage.jsx";
+
 function App() {
-  return <h1>Knowledge Platform</h1>;
+  return <LoginPage />;
 }
 
 export default App;
