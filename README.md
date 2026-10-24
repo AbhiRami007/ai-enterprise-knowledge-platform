@@ -15,7 +15,7 @@ The project is in active development. The full UI exists; the backend is real fo
 | Signup: create a company, or ask to join one; admins approve, reject (and later re-approve) requests | ✅ Done |
 | Admin user management: list, add, approve, reject, delete | ✅ Done |
 | Frontend: React + Redux Toolkit app with every screen (see [Frontend](#frontend)) | ✅ Done |
-| Documents API: list, detail, upload (S3/MinIO), delete | 🚧 UI done on mock data; `GET /api/v1/documents/:id` is still a stub |
+| Documents API: list, detail, upload (Amazon S3), delete | 🚧 UI done on mock data; `GET /api/v1/documents/:id` is still a stub |
 | Async document processing (text extraction, chunking) | ⏳ Next after documents |
 | Search (embeddings + pgvector) | 🚧 UI done on mock data |
 | AI assistant (RAG, streamed answers with citations, `ai-service/`) | 🚧 UI done on mock data |
