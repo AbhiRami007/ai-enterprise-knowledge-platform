@@ -8,6 +8,14 @@
   --accent: #3e63dd;
   --accent-text: #ffffff;
   --error: #ce2c31;
+  --error-bg: #feebec;
+  --success: #18794e;
+  --success-bg: #e6f6eb;
+  --warning: #ab6400;
+  --warning-bg: #fff7c2;
+  --info: #0d74ce;
+  --info-bg: #e6f4fe;
+  --hover: #f0f0f3;
 
   color-scheme: light dark;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -23,6 +31,14 @@
     --border: #2e3135;
     --accent: #5472e4;
     --error: #ff9592;
+    --error-bg: #3b1219;
+    --success: #3dd68c;
+    --success-bg: #132d21;
+    --warning: #ffca16;
+    --warning-bg: #302008;
+    --info: #70b8ff;
+    --info-bg: #0d2847;
+    --hover: #212225;
   }
 }
 
@@ -100,16 +116,53 @@ button:disabled {
 
 .app-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px 16px;
   padding: 12px 24px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
 }
 
+.app-header-start {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 24px;
+}
+
 .app-name {
   font-weight: 600;
+}
+
+.app-nav {
+  display: flex;
+  gap: 4px;
+}
+
+.app-nav a {
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+
+.app-nav a:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.app-nav a.active {
+  background: var(--hover);
+  color: var(--text);
+  font-weight: 500;
+}
+
+.app-nav a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .app-user {
@@ -137,6 +190,120 @@ button:disabled {
   padding: 32px;
   text-align: center;
   color: var(--text-muted);
+}
+
+/* Shared text and states */
+
+.muted {
+  color: var(--text-muted);
+}
+
+.small {
+  font-size: 0.8125rem;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.empty-state {
+  padding: 48px 24px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.empty-state p {
+  margin: 0 0 4px;
+}
+
+.callout-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.callout-error p {
+  margin: 0;
+}
+
+/* Tables */
+
+.table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table th,
+.table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.table th {
+  color: var(--text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table .numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.doc-title {
+  font-weight: 500;
+}
+
+/* Status badges: colour plus text, so status never relies on colour alone. */
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.status-ready {
+  background: var(--success-bg);
+  color: var(--success);
+}
+
+.status-processing {
+  background: var(--info-bg);
+  color: var(--info);
+}
+
+.status-pending {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+
+.status-failed {
+  background: var(--error-bg);
+  color: var(--error);
 }
 
 /* Login */

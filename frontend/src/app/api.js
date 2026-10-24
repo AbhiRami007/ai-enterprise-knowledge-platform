@@ -5,8 +5,11 @@ import {
   tokenReceived,
 } from "../features/auth/authSlice.js";
 
+export const API_URL =
+  import.meta.env.VITE_API_URL ?? "http://localhost:3000/api/v1";
+
 const rawBaseQuery = fetchBaseQuery({
-  baseUrl: import.meta.env.VITE_API_URL ?? "http://localhost:3000/api/v1",
+  baseUrl: API_URL,
   // Lets the browser store and send the httpOnly refresh cookie.
   credentials: "include",
   prepareHeaders: (headers, { getState }) => {
@@ -56,7 +59,7 @@ async function baseQueryWithReauth(args, api, extraOptions) {
 
 export const api = createApi({
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["Me"],
+  tagTypes: ["Me", "Document"],
   endpoints: (builder) => ({
     login: builder.mutation({
       query: (credentials) => ({
@@ -113,7 +116,20 @@ export const api = createApi({
       query: () => "/auth/me",
       providesTags: ["Me"],
     }),
+    getDocuments: builder.query({
+      query: () => "/documents",
+      // The "LIST" tag lets an upload refetch the list without knowing ids.
+      providesTags: (documents = []) => [
+        ...documents.map(({ id }) => ({ type: "Document", id })),
+        { type: "Document", id: "LIST" },
+      ],
+    }),
   }),
 });
 
-export const { useLoginMutation, useLogoutMutation, useMeQuery } = api;
+export const {
+  useLoginMutation,
+  useLogoutMutation,
+  useMeQuery,
+  useGetDocumentsQuery,
+} = api;

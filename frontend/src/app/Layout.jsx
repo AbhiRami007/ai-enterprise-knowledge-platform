@@ -1,4 +1,4 @@
-import { Outlet } from "react-router";
+import { NavLink, Outlet } from "react-router";
 import { useLogoutMutation, useMeQuery } from "./api.js";
 
 // Shell for every logged-in page; the page itself renders in <Outlet />.
@@ -9,7 +9,16 @@ function Layout() {
   return (
     <>
       <header className="app-header">
-        <span className="app-name">Knowledge Platform</span>
+        <div className="app-header-start">
+          <span className="app-name">Knowledge Platform</span>
+          {/* NavLink adds class="active" to the link for the current page. */}
+          <nav className="app-nav" aria-label="Main">
+            <NavLink to="/" end>
+              Home
+            </NavLink>
+            <NavLink to="/documents">Documents</NavLink>
+          </nav>
+        </div>
         <div className="app-user">
           {user && <span>{user.email}</span>}
           <button
