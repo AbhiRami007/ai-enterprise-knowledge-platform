@@ -1,0 +1,168 @@
+/* Colours as variables so dark mode only has to redefine them. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #1c2024;
+  --text-muted: #60646c;
+  --border: #dfe1e6;
+  --accent: #3e63dd;
+  --accent-text: #ffffff;
+  --error: #ce2c31;
+
+  color-scheme: light dark;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111113;
+    --surface: #18191b;
+    --text: #edeef0;
+    --text-muted: #b0b4ba;
+    --border: #2e3135;
+    --accent: #5472e4;
+    --error: #ff9592;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+h1 {
+  margin: 0 0 16px;
+  font-size: 1.5rem;
+}
+
+/* Form controls */
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+input {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+input:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+button {
+  padding: 8px 16px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.button-secondary {
+  border-color: var(--border);
+  background: transparent;
+  color: var(--text);
+}
+
+.form-error {
+  margin: 0;
+  color: var(--error);
+  font-size: 0.875rem;
+}
+
+/* App shell */
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.app-name {
+  font-weight: 600;
+}
+
+.app-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.app-user span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+.app-loading {
+  padding: 32px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* Login */
+
+.login-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: min(360px, calc(100% - 32px));
+  margin: 15vh auto 0;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    padding: 12px 16px;
+  }
+
+  .app-main {
+    padding: 24px 16px;
+  }
+
+  .login-card {
+    padding: 24px;
+  }
+}

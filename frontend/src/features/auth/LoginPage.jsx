@@ -38,7 +38,7 @@ function LoginPage() {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form className="login-card" onSubmit={handleSubmit}>
       <h1>Log in</h1>
 
       <label>
@@ -65,7 +65,11 @@ function LoginPage() {
         />
       </label>
 
-      {error && <p role="alert">{errorMessage(error)}</p>}
+      {error && (
+        <p className="form-error" role="alert">
+          {errorMessage(error)}
+        </p>
+      )}
 
       <button type="submit" disabled={isLoading}>
         {isLoading ? "Logging in…" : "Log in"}

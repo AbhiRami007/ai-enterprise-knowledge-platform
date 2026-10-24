@@ -1,27 +1,13 @@
-import { useLogoutMutation, useMeQuery } from "../../app/api.js";
+import { useMeQuery } from "../../app/api.js";
 
-// Temporary until we add routing and real pages.
 function HomePage() {
-  const { data: user, isLoading, error, refetch } = useMeQuery();
-  const [logout, { isLoading: isLoggingOut }] = useLogoutMutation();
-
-  if (isLoading) {
-    return <p>Loading…</p>;
-  }
-
-  if (error) {
-    return <p role="alert">Could not load your profile.</p>;
-  }
+  // Same cached request as the header, so this doesn't fetch twice.
+  const { data: user } = useMeQuery();
 
   return (
     <>
-      <p>Logged in as {user.email}</p>
-      <button type="button" onClick={refetch}>
-        Reload profile
-      </button>
-      <button type="button" onClick={() => logout()} disabled={isLoggingOut}>
-        {isLoggingOut ? "Logging out…" : "Log out"}
-      </button>
+      <h1>Welcome</h1>
+      {user && <p>You are signed in as {user.role}.</p>}
     </>
   );
 }

@@ -1,5 +1,6 @@
 import { useSelector } from "react-redux";
 import { Navigate, Route, Routes } from "react-router";
+import Layout from "./app/Layout.jsx";
 import LoginPage from "./features/auth/LoginPage.jsx";
 import RequireAuth from "./features/auth/RequireAuth.jsx";
 import HomePage from "./features/home/HomePage.jsx";
@@ -11,20 +12,22 @@ function App() {
   // Before any route renders: otherwise a reload on a protected page would
   // redirect to /login before the startup refresh has restored the session.
   if (!sessionChecked) {
-    return <p>Loading…</p>;
+    return <p className="app-loading">Loading…</p>;
   }
 
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      {/* Every route nested here is protected and gets the header. */}
       <Route
-        path="/"
         element={
           <RequireAuth>
-            <HomePage />
+            <Layout />
           </RequireAuth>
         }
-      />
+      >
+        <Route index element={<HomePage />} />
+      </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
