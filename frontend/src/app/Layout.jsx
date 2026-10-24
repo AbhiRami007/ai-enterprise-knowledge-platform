@@ -18,6 +18,7 @@ function Layout() {
             </NavLink>
             <NavLink to="/documents">Documents</NavLink>
             <NavLink to="/search">Search</NavLink>
+            <NavLink to="/ask">Ask</NavLink>
           </nav>
         </div>
         <div className="app-user">

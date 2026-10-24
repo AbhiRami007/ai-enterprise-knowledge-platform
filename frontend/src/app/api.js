@@ -21,31 +21,40 @@ const rawBaseQuery = fetchBaseQuery({
   },
 });
 
-// A 401 here means bad credentials or a dead cookie; refreshing would loop.
-const NO_REAUTH_URLS = ["/auth/login", "/auth/refresh"];
+const REFRESH_URL = "/auth/refresh";
 
-// Shared by every request that hits a 401 at the same time. Refresh tokens
-// are single-use, so a second parallel refresh would revoke every session.
+// Shared by every refresh in flight at the same time: 401 retries, the
+// startup refresh and the chat stream's. Refresh tokens are single-use, so a
+// second parallel refresh would revoke every session.
 let refreshPromise = null;
 
-async function baseQueryWithReauth(args, api, extraOptions) {
-  let result = await rawBaseQuery(args, api, extraOptions);
-
-  const url = typeof args === "string" ? args : args.url;
-  if (result.error?.status !== 401 || NO_REAUTH_URLS.includes(url)) {
-    return result;
-  }
-
+function sharedRefresh(api, extraOptions) {
   if (!refreshPromise) {
     refreshPromise = rawBaseQuery(
-      { url: "/auth/refresh", method: "POST" },
+      { url: REFRESH_URL, method: "POST" },
       api,
       extraOptions
     ).finally(() => {
       refreshPromise = null;
     });
   }
-  const refreshResult = await refreshPromise;
+  return refreshPromise;
+}
+
+async function baseQueryWithReauth(args, api, extraOptions) {
+  const url = typeof args === "string" ? args : args.url;
+  if (url === REFRESH_URL) {
+    return sharedRefresh(api, extraOptions);
+  }
+
+  let result = await rawBaseQuery(args, api, extraOptions);
+
+  // A 401 from login means wrong credentials, not an expired token.
+  if (result.error?.status !== 401 || url === "/auth/login") {
+    return result;
+  }
+
+  const refreshResult = await sharedRefresh(api, extraOptions);
 
   if (refreshResult.data) {
     api.dispatch(tokenReceived(refreshResult.data.accessToken));
@@ -81,7 +90,7 @@ export const api = createApi({
     // The refresh token is sent automatically as the httpOnly cookie.
     refresh: builder.mutation({
       query: () => ({
-        url: "/auth/refresh",
+        url: REFRESH_URL,
         method: "POST",
       }),
       async onQueryStarted(_arg, { dispatch, queryFulfilled }) {

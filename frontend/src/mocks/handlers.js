@@ -179,6 +179,68 @@ export const handlers = [
     return HttpResponse.json({ query: q, results: searchChunks(q, limit) });
   }),
 
+  // POST /ask { question } -> text/event-stream of "token" events, then
+  // "citations" and "done". Answers only from document passages.
+  http.post(`${API_URL}/ask`, async ({ request }) => {
+    const denied = unauthorized(request);
+    if (denied) return denied;
+
+    const { question } = await request.json().catch(() => ({}));
+    const text = typeof question === "string" ? question.trim() : "";
+    if (text.length === 0 || text.length > 2000) {
+      return errorResponse(400, "question must be 1-2000 characters");
+    }
+
+    const sources = searchChunks(text, 3).map((result, i) => ({
+      index: i + 1,
+      documentId: result.documentId,
+      documentTitle: result.documentTitle,
+      chunkId: result.chunkId,
+      snippet: result.snippet,
+    }));
+
+    const answer =
+      sources.length === 0
+        ? "I couldn't find anything about that in your documents. Try rephrasing, or check that the relevant document has been uploaded and processed."
+        : [
+            "Here is what your documents say.",
+            ...sources.map((s) => `${s.snippet} [${s.index}]`),
+          ].join(" ");
+
+    const encoder = new TextEncoder();
+    const send = (controller, event, data) =>
+      controller.enqueue(
+        encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
+      );
+
+    let cancelled = false;
+    const stream = new ReadableStream({
+      async start(controller) {
+        await delay(700); // "Thinking…" before the first word.
+        for (const word of answer.split(/(?<= )/)) {
+          if (cancelled) return;
+          send(controller, "token", { text: word });
+          await delay(30);
+        }
+        if (cancelled) return;
+        send(controller, "citations", sources);
+        send(controller, "done", {});
+        controller.close();
+      },
+      // The client pressed Stop or left: stop producing words.
+      cancel() {
+        cancelled = true;
+      },
+    });
+
+    return new HttpResponse(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+      },
+    });
+  }),
+
   // Overrides the backend's stub GET /documents/:id until it reads Postgres.
   http.get(`${API_URL}/documents/:id`, async ({ request, params }) => {
     await delay();
