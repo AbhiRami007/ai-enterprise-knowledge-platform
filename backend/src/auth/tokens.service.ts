@@ -5,7 +5,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { createHash, randomBytes } from "node:crypto";
 import { IsNull, Repository } from "typeorm";
 import { User } from "../users/entities/user.entity.js";
-import { TokenResponseDto } from "./dto/token-response.dto.js";
+import type { IssuedTokens } from "./types/issued-tokens.js";
 import { RefreshToken } from "./entities/refresh-token.entity.js";
 import type { JwtPayload } from "./types/jwt-payload.js";
 
@@ -31,7 +31,7 @@ export class TokensService {
       Number(config.get<string>("REFRESH_TOKEN_TTL_DAYS") ?? 7) * DAY_MS;
   }
 
-  async issue(user: User): Promise<TokenResponseDto> {
+  async issue(user: User): Promise<IssuedTokens> {
     const payload: JwtPayload = {
       sub: user.id,
       role: user.role,
@@ -56,7 +56,7 @@ export class TokensService {
   }
 
   // Exchanges a refresh token for a new pair. Returns null if the token can't be used.
-  async rotate(refreshToken: string): Promise<TokenResponseDto | null> {
+  async rotate(refreshToken: string): Promise<IssuedTokens | null> {
     const stored = await this.refreshTokens.findOne({
       where: { tokenHash: hashToken(refreshToken) },
       relations: { user: true },

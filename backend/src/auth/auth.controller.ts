@@ -22,7 +22,8 @@ import type { Request, Response } from "express";
 import { AuthService } from "./auth.service.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { ChangePasswordDto } from "./dto/change-password.dto.js";
-import { TokenResponseDto } from "./dto/token-response.dto.js";
+import { AccessTokenResponseDto } from "./dto/access-token-response.dto.js";
+import type { IssuedTokens } from "./types/issued-tokens.js";
 import { Public } from "./decorators/public.decorator.js";
 import { CurrentUser } from "./decorators/current-user.decorator.js";
 import { RateLimit } from "./decorators/rate-limit.decorator.js";
@@ -49,8 +50,8 @@ export class AuthController {
     summary: "Log in with email and password",
   })
   @ApiOkResponse({
-    type: TokenResponseDto,
-    description: "Access and refresh tokens issued",
+    type: AccessTokenResponseDto,
+    description: "Access token issued; refresh token set as an httpOnly cookie",
   })
   @ApiBadRequestResponse({
     description: "Email or password missing or invalid",
@@ -81,10 +82,10 @@ export class AuthController {
   @ApiOperation({
     summary: "Exchange a refresh token for a new token pair",
     description:
-      "Refresh tokens are single-use. Reusing an old one revokes every session for that user.",
+      "Reads the refresh token from the httpOnly cookie and replaces it. Refresh tokens are single-use. Reusing an old one revokes every session for that user.",
   })
   @ApiOkResponse({
-    type: TokenResponseDto,
+    type: AccessTokenResponseDto,
   })
   @ApiUnauthorizedResponse({
     description: "Refresh token invalid, expired or already used",
@@ -164,7 +165,7 @@ export class AuthController {
       "Revokes every refresh token for the user and returns a new pair for this session.",
   })
   @ApiOkResponse({
-    type: TokenResponseDto,
+    type: AccessTokenResponseDto,
   })
   @ApiBadRequestResponse({
     description:
@@ -203,7 +204,7 @@ export class AuthController {
   }
 
   // The refresh token travels only in the httpOnly cookie, never in the body.
-  private sendTokens(res: Response, tokens: TokenResponseDto) {
+  private sendTokens(res: Response, tokens: IssuedTokens): AccessTokenResponseDto {
     setRefreshCookie(res, tokens.refreshToken, tokens.refreshTokenExpiresAt);
 
     return {
