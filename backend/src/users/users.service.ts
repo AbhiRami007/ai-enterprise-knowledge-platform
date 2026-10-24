@@ -12,6 +12,11 @@ const UNIQUE_VIOLATION = "23505";
 export class UsersService {
   constructor(private readonly userRepository: UserRepository) {}
 
+  async findAllInTenant(tenantId: string) {
+    const users = await this.userRepository.findAllByTenant(tenantId);
+    return users.map((user) => UserResponseDto.fromEntity(user));
+  }
+
   async create(tenantId: string, dto: CreateUserDto) {
     if (await this.userRepository.findByEmail(dto.email)) {
       throw new ConflictException("A user with this email already exists");

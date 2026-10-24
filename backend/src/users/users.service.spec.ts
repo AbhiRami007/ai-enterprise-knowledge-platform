@@ -10,12 +10,16 @@ import { User } from "./entities/user.entity.js";
 describe("UsersService", () => {
   let repository: {
     findByEmail: jest.Mock<(email: string) => Promise<User | null>>;
+    findAllByTenant: jest.Mock<(tenantId: string) => Promise<User[]>>;
     create: jest.Mock<(data: Partial<User>) => Promise<User>>;
   };
   let service: UsersService;
 
   beforeEach(() => {
     repository = {
+      findAllByTenant: jest
+        .fn<(tenantId: string) => Promise<User[]>>()
+        .mockResolvedValue([]),
       findByEmail: jest
         .fn<(email: string) => Promise<User | null>>()
         .mockResolvedValue(null),
@@ -72,5 +76,27 @@ describe("UsersService", () => {
         password: "a-longer-passphrase",
       })
     ).rejects.toThrow(ConflictException);
+  });
+
+  it("should list the tenant's users without password hashes", async () => {
+    repository.findAllByTenant.mockResolvedValue([
+      {
+        id: "user-1",
+        email: "a@example.com",
+        passwordHash: "$2b$10$hash",
+        role: Role.Admin,
+        tenantId: "tenant-1",
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as User,
+    ]);
+
+    const result = await service.findAllInTenant("tenant-1");
+
+    expect(repository.findAllByTenant).toHaveBeenCalledWith("tenant-1");
+    expect(result).toHaveLength(1);
+    expect(result[0]).not.toHaveProperty("passwordHash");
+    expect(result[0].email).toBe("a@example.com");
   });
 });

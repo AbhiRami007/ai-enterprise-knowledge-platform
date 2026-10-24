@@ -110,6 +110,7 @@ Every route requires `Authorization: Bearer <accessToken>` unless marked public.
 | `POST` | `/api/v1/auth/logout-all` | Bearer | Revoke every session of the current user |
 | `PATCH` | `/api/v1/auth/password` | Bearer | Change password (ends other sessions) |
 | `GET` | `/api/v1/auth/me` | Bearer | Current user's profile |
+| `GET` | `/api/v1/users` | Bearer, admin | List the users in the admin's tenant |
 | `POST` | `/api/v1/users` | Bearer, admin | Create a user in the admin's tenant |
 | `GET` | `/api/v1/documents/:id` | Bearer | Get a document by UUID (stub) |
 

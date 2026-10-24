@@ -1,10 +1,11 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import { Body, Controller, Get, Post } from "@nestjs/common";
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiOkResponse,
   ApiOperation,
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
@@ -21,6 +22,25 @@ import { UsersService } from "./users.service.js";
 @Roles(Role.Admin)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Get()
+  @ApiOperation({
+    summary: "List the users in the admin's tenant, newest first",
+  })
+  @ApiOkResponse({
+    type: UserResponseDto,
+    isArray: true,
+  })
+  @ApiUnauthorizedResponse({
+    description: "Missing or invalid access token",
+  })
+  @ApiForbiddenResponse({
+    description: "Caller is not an admin",
+  })
+  // The tenant comes from the token, never from the request.
+  findAll(@CurrentUser() admin: JwtPayload) {
+    return this.usersService.findAllInTenant(admin.tenantId);
+  }
 
   @Post()
   @ApiOperation({

@@ -9,6 +9,8 @@ import DocumentDetailPage from "./features/documents/DocumentDetailPage.jsx";
 import SearchPage from "./features/search/SearchPage.jsx";
 import AskPage from "./features/ask/AskPage.jsx";
 import AccountPage from "./features/account/AccountPage.jsx";
+import AdminUsersPage from "./features/admin/AdminUsersPage.jsx";
+import RequireRole from "./features/auth/RequireRole.jsx";
 import { selectSessionChecked } from "./features/auth/authSlice.js";
 
 function App() {
@@ -37,6 +39,14 @@ function App() {
         <Route path="search" element={<SearchPage />} />
         <Route path="ask" element={<AskPage />} />
         <Route path="account" element={<AccountPage />} />
+        <Route
+          path="admin/users"
+          element={
+            <RequireRole role="admin">
+              <AdminUsersPage />
+            </RequireRole>
+          }
+        />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

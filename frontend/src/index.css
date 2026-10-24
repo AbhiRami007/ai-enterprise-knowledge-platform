@@ -752,6 +752,39 @@ input[type="file"] {
   color: var(--error);
 }
 
+/* Admin */
+
+select {
+  max-width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.role-admin {
+  border-color: transparent;
+  background: var(--info-bg);
+  color: var(--info);
+}
+
 /* Login */
 
 .login-card {

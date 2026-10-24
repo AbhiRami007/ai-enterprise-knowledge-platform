@@ -25,6 +25,9 @@ function Layout() {
             <NavLink to="/documents">Documents</NavLink>
             <NavLink to="/search">Search</NavLink>
             <NavLink to="/ask">Ask</NavLink>
+            {user?.role === "admin" && (
+              <NavLink to="/admin/users">Users</NavLink>
+            )}
           </nav>
         </div>
         <div className="app-user">

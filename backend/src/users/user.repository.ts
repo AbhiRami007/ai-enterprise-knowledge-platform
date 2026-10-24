@@ -22,6 +22,14 @@ export class UserRepository {
     return this.repository.findOne({ where: { id }, relations: { tenant: true } });
   }
 
+  // Always filtered by tenant: one company must never see another's users.
+  findAllByTenant(tenantId: string): Promise<User[]> {
+    return this.repository.find({
+      where: { tenantId },
+      order: { createdAt: "DESC" },
+    });
+  }
+
   async updatePasswordHash(id: string, passwordHash: string) {
     await this.repository.update({ id }, { passwordHash });
   }

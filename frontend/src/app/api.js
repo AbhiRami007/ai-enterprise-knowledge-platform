@@ -68,7 +68,7 @@ async function baseQueryWithReauth(args, api, extraOptions) {
 
 export const api = createApi({
   baseQuery: baseQueryWithReauth,
-  tagTypes: ["Me", "Document"],
+  tagTypes: ["Me", "Document", "User"],
   endpoints: (builder) => ({
     login: builder.mutation({
       query: (credentials) => ({
@@ -138,6 +138,16 @@ export const api = createApi({
       query: () => "/auth/me",
       providesTags: ["Me"],
     }),
+    // Real backend endpoints, admin only. Both are scoped to the admin's
+    // tenant by the server, based on the access token.
+    getUsers: builder.query({
+      query: () => "/users",
+      providesTags: [{ type: "User", id: "LIST" }],
+    }),
+    createUser: builder.mutation({
+      query: (body) => ({ url: "/users", method: "POST", body }),
+      invalidatesTags: [{ type: "User", id: "LIST" }],
+    }),
     getDocuments: builder.query({
       query: () => "/documents",
       // The "LIST" tag lets an upload refetch the list without knowing ids.
@@ -178,6 +188,8 @@ export const {
   useLogoutMutation,
   useChangePasswordMutation,
   useMeQuery,
+  useGetUsersQuery,
+  useCreateUserMutation,
   useGetDocumentsQuery,
   useGetDocumentQuery,
   useDeleteDocumentMutation,
