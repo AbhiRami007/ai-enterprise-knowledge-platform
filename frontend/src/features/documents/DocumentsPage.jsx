@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useSelector } from "react-redux";
-import { api, useGetDocumentsQuery } from "../../app/api.js";
+import { Link, useLocation } from "react-router";
+import { api, useGetDocumentsQuery, useMeQuery } from "../../app/api.js";
 import { formatBytes, formatDate, formatFileType } from "../../utils/format.js";
+import { canEditDocuments } from "../auth/permissions.js";
 import StatusBadge from "./StatusBadge.jsx";
 import UploadForm from "./UploadForm.jsx";
 
@@ -15,6 +17,9 @@ function isInProgress(doc) {
 function DocumentsPage() {
   const [showUpload, setShowUpload] = useState(false);
   const [uploadedTitle, setUploadedTitle] = useState(null);
+  const { data: user } = useMeQuery();
+  // Set by DocumentDetailPage after a delete.
+  const deletedTitle = useLocation().state?.deletedTitle;
 
   // Read the cached list first, so polling runs only while something is
   // still being processed and stops once every document is ready or failed.
@@ -35,17 +40,25 @@ function DocumentsPage() {
     <>
       <div className="page-header">
         <h1>Documents</h1>
-        <button
-          type="button"
-          onClick={() => {
-            setShowUpload((open) => !open);
-            setUploadedTitle(null);
-          }}
-          aria-expanded={showUpload}
-        >
-          {showUpload ? "Cancel" : "Upload document"}
-        </button>
+        {canEditDocuments(user) && (
+          <button
+            type="button"
+            onClick={() => {
+              setShowUpload((open) => !open);
+              setUploadedTitle(null);
+            }}
+            aria-expanded={showUpload}
+          >
+            {showUpload ? "Cancel" : "Upload document"}
+          </button>
+        )}
       </div>
+
+      {deletedTitle && !uploadedTitle && (
+        <p className="callout-success" role="status">
+          “{deletedTitle}” was deleted.
+        </p>
+      )}
 
       {showUpload && (
         <section className="panel" aria-label="Upload a document">
@@ -97,7 +110,9 @@ function DocumentsPage() {
               {documents.map((doc) => (
                 <tr key={doc.id}>
                   <td>
-                    <div className="doc-title">{doc.title}</div>
+                    <Link to={`/documents/${doc.id}`} className="doc-title">
+                      {doc.title}
+                    </Link>
                     <div className="muted small">{doc.originalFilename}</div>
                   </td>
                   <td>

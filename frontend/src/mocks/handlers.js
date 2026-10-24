@@ -20,6 +20,29 @@ function unauthorized(request) {
     : errorResponse(401, "Unauthorized");
 }
 
+// Reads the role claim from the real access token (no signature check: the
+// mock only needs to behave like the backend's RolesGuard, not secure it).
+function roleFrom(request) {
+  const token = request.headers.get("Authorization")?.replace("Bearer ", "");
+  try {
+    const payload = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(atob(payload)).role;
+  } catch {
+    return null;
+  }
+}
+
+function forbiddenUnlessEditor(request) {
+  return ["admin", "editor"].includes(roleFrom(request))
+    ? null
+    : errorResponse(403, "Forbidden resource");
+}
+
+const notFound = () => errorResponse(404, "Document not found");
+
+const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // Fakes the background worker: pending -> processing -> ready (or failed
 // when the filename contains "fail", to try the error state).
 function simulateProcessing(doc) {
@@ -56,7 +79,7 @@ export const handlers = [
   // multipart/form-data with "file" and an optional "title".
   http.post(`${API_URL}/documents`, async ({ request }) => {
     await delay(800);
-    const denied = unauthorized(request);
+    const denied = unauthorized(request) ?? forbiddenUnlessEditor(request);
     if (denied) return denied;
 
     const form = await request.formData();
@@ -97,5 +120,29 @@ export const handlers = [
     simulateProcessing(doc);
 
     return HttpResponse.json(doc, { status: 201 });
+  }),
+
+  // Overrides the backend's stub GET /documents/:id until it reads Postgres.
+  http.get(`${API_URL}/documents/:id`, async ({ request, params }) => {
+    await delay();
+    const denied = unauthorized(request);
+    if (denied) return denied;
+    if (!UUID.test(params.id)) {
+      return errorResponse(400, "id must be a UUID");
+    }
+
+    const doc = documents.find((d) => d.id === params.id);
+    return doc ? HttpResponse.json(doc) : notFound();
+  }),
+
+  http.delete(`${API_URL}/documents/:id`, async ({ request, params }) => {
+    await delay(600);
+    const denied = unauthorized(request) ?? forbiddenUnlessEditor(request);
+    if (denied) return denied;
+
+    const index = documents.findIndex((d) => d.id === params.id);
+    if (index === -1) return notFound();
+    documents.splice(index, 1);
+    return new HttpResponse(null, { status: 204 });
   }),
 ];

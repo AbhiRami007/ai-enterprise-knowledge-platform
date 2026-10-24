@@ -124,6 +124,16 @@ export const api = createApi({
         { type: "Document", id: "LIST" },
       ],
     }),
+    getDocument: builder.query({
+      query: (id) => `/documents/${id}`,
+      providesTags: (_result, _error, id) => [{ type: "Document", id }],
+    }),
+    deleteDocument: builder.mutation({
+      query: (id) => ({ url: `/documents/${id}`, method: "DELETE" }),
+      // Only the list: refetching the deleted document itself would 404
+      // while the detail page is still on screen.
+      invalidatesTags: [{ type: "Document", id: "LIST" }],
+    }),
     uploadDocument: builder.mutation({
       query: ({ file, title }) => {
         const body = new FormData();
@@ -143,5 +153,7 @@ export const {
   useLogoutMutation,
   useMeQuery,
   useGetDocumentsQuery,
+  useGetDocumentQuery,
+  useDeleteDocumentMutation,
   useUploadDocumentMutation,
 } = api;
