@@ -5,6 +5,7 @@ import {
   HttpCode,
   Patch,
   Post,
+  Req,
   Res,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -17,10 +18,9 @@ import {
   ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import { AuthService } from "./auth.service.js";
 import { LoginDto } from "./dto/login.dto.js";
-import { RefreshTokenDto } from "./dto/refresh-token.dto.js";
 import { ChangePasswordDto } from "./dto/change-password.dto.js";
 import { TokenResponseDto } from "./dto/token-response.dto.js";
 import { Public } from "./decorators/public.decorator.js";
@@ -28,7 +28,11 @@ import { CurrentUser } from "./decorators/current-user.decorator.js";
 import { RateLimit } from "./decorators/rate-limit.decorator.js";
 import type { JwtPayload } from "./types/jwt-payload.js";
 import { UserResponseDto } from "../users/dto/user-response.dto.js";
-import { setRefreshCookie } from "./refresh-token.cookie.js";
+import {
+  REFRESH_TOKEN_COOKIE,
+  clearRefreshCookie,
+  setRefreshCookie,
+} from "./refresh-token.cookie.js";
 
 // Slows down password guessing: 5 attempts per minute per IP.
 const PASSWORD_ATTEMPT_LIMIT = { limit: 5, windowMs: 60_000 };
@@ -68,14 +72,7 @@ export class AuthController {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    setRefreshCookie(res, tokens.refreshToken, tokens.refreshTokenExpiresAt);
-
-    // The refresh token travels only in the httpOnly cookie, never in the body.
-    return {
-      accessToken: tokens.accessToken,
-      tokenType: tokens.tokenType,
-      expiresIn: tokens.expiresIn,
-    };
+    return this.sendTokens(res, tokens);
   }
 
   @Public()
@@ -92,14 +89,24 @@ export class AuthController {
   @ApiUnauthorizedResponse({
     description: "Refresh token invalid, expired or already used",
   })
-  async refresh(@Body() body: RefreshTokenDto) {
-    const tokens = await this.authService.refresh(body.refreshToken);
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const refreshToken: string | undefined = req.cookies?.[REFRESH_TOKEN_COOKIE];
+
+    if (!refreshToken) {
+      throw new UnauthorizedException("Invalid refresh token");
+    }
+
+    const tokens = await this.authService.refresh(refreshToken);
 
     if (!tokens) {
       throw new UnauthorizedException("Invalid refresh token");
     }
 
-    return tokens;
+    // Refresh tokens are single-use, so the cookie must be replaced every time.
+    return this.sendTokens(res, tokens);
   }
 
   // Public so it still works after the access token has expired.
@@ -112,8 +119,18 @@ export class AuthController {
   @ApiNoContentResponse({
     description: "Logged out (also returned for unknown tokens)",
   })
-  async logout(@Body() body: RefreshTokenDto) {
-    await this.authService.logout(body.refreshToken);
+  async logout(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const refreshToken: string | undefined = req.cookies?.[REFRESH_TOKEN_COOKIE];
+
+    if (refreshToken) {
+      await this.authService.logout(refreshToken);
+    }
+
+    // Cleared even for unknown tokens so the browser never keeps a dead one.
+    clearRefreshCookie(res);
   }
 
   @Post("logout-all")
@@ -128,8 +145,14 @@ export class AuthController {
   @ApiUnauthorizedResponse({
     description: "Missing or invalid access token",
   })
-  async logoutAll(@CurrentUser() user: JwtPayload) {
+  async logoutAll(
+    @CurrentUser() user: JwtPayload,
+    @Res({ passthrough: true }) res: Response
+  ) {
     await this.authService.logoutAll(user.sub);
+
+    // This browser's refresh token was revoked too.
+    clearRefreshCookie(res);
   }
 
   @RateLimit(PASSWORD_ATTEMPT_LIMIT)
@@ -150,15 +173,18 @@ export class AuthController {
   @ApiUnauthorizedResponse({
     description: "Missing or invalid access token",
   })
-  changePassword(
+  async changePassword(
     @CurrentUser() user: JwtPayload,
-    @Body() body: ChangePasswordDto
+    @Body() body: ChangePasswordDto,
+    @Res({ passthrough: true }) res: Response
   ) {
-    return this.authService.changePassword(
+    const tokens = await this.authService.changePassword(
       user.sub,
       body.currentPassword,
       body.newPassword
     );
+
+    return this.sendTokens(res, tokens);
   }
 
   @Get("me")
@@ -174,5 +200,16 @@ export class AuthController {
   })
   me(@CurrentUser() user: JwtPayload) {
     return this.authService.getProfile(user.sub);
+  }
+
+  // The refresh token travels only in the httpOnly cookie, never in the body.
+  private sendTokens(res: Response, tokens: TokenResponseDto) {
+    setRefreshCookie(res, tokens.refreshToken, tokens.refreshTokenExpiresAt);
+
+    return {
+      accessToken: tokens.accessToken,
+      tokenType: tokens.tokenType,
+      expiresIn: tokens.expiresIn,
+    };
   }
 }
