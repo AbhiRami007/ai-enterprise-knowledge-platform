@@ -47,7 +47,7 @@ function UploadForm({ onUploaded }) {
   const message = fileError ?? (error && serverErrorMessage(error));
 
   return (
-    <form className="upload-form" onSubmit={handleSubmit}>
+    <form className="stacked-form" onSubmit={handleSubmit}>
       <label>
         File
         <input

@@ -121,6 +121,19 @@ export const api = createApi({
         }
       },
     }),
+    // Real backend endpoint. It revokes every refresh token of the user and
+    // returns a new pair, so this session continues and all others end.
+    changePassword: builder.mutation({
+      query: (body) => ({ url: "/auth/password", method: "PATCH", body }),
+      async onQueryStarted(_body, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(tokenReceived(data.accessToken));
+        } catch {
+          // The component reads the error from useChangePasswordMutation.
+        }
+      },
+    }),
     me: builder.query({
       query: () => "/auth/me",
       providesTags: ["Me"],
@@ -163,6 +176,7 @@ export const api = createApi({
 export const {
   useLoginMutation,
   useLogoutMutation,
+  useChangePasswordMutation,
   useMeQuery,
   useGetDocumentsQuery,
   useGetDocumentQuery,

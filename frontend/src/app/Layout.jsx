@@ -22,7 +22,11 @@ function Layout() {
           </nav>
         </div>
         <div className="app-user">
-          {user && <span>{user.email}</span>}
+          {user && (
+            <NavLink to="/account" title="Account settings">
+              {user.email}
+            </NavLink>
+          )}
           <button
             type="button"
             className="button-secondary"
