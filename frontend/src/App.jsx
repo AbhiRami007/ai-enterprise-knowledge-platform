@@ -6,6 +6,7 @@ import RequireAuth from "./features/auth/RequireAuth.jsx";
 import HomePage from "./features/home/HomePage.jsx";
 import DocumentsPage from "./features/documents/DocumentsPage.jsx";
 import DocumentDetailPage from "./features/documents/DocumentDetailPage.jsx";
+import SearchPage from "./features/search/SearchPage.jsx";
 import { selectSessionChecked } from "./features/auth/authSlice.js";
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
         <Route index element={<HomePage />} />
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="documents/:id" element={<DocumentDetailPage />} />
+        <Route path="search" element={<SearchPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

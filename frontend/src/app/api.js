@@ -134,6 +134,9 @@ export const api = createApi({
       // while the detail page is still on screen.
       invalidatesTags: [{ type: "Document", id: "LIST" }],
     }),
+    search: builder.query({
+      query: (q) => ({ url: "/search", params: { q, limit: 20 } }),
+    }),
     uploadDocument: builder.mutation({
       query: ({ file, title }) => {
         const body = new FormData();
@@ -156,4 +159,5 @@ export const {
   useGetDocumentQuery,
   useDeleteDocumentMutation,
   useUploadDocumentMutation,
+  useSearchQuery,
 } = api;

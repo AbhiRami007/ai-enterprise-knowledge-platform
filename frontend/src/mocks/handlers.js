@@ -6,7 +6,13 @@ import {
   resolveMimeType,
   titleFromFilename,
 } from "../features/documents/uploadRules.js";
-import { documents } from "./db.js";
+import {
+  MAX_QUERY_LENGTH,
+  MIN_QUERY_LENGTH,
+  searchTerms,
+  termsPattern,
+} from "../features/search/terms.js";
+import { chunks, documents } from "./db.js";
 
 // Same JSON shape as NestJS's built-in HTTP exceptions.
 function errorResponse(status, message) {
@@ -42,6 +48,41 @@ const notFound = () => errorResponse(404, "Document not found");
 
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+// Keyword stand-in for the real semantic search: score = share of the query
+// terms found in the chunk, so 1.0 means every term matched.
+function searchChunks(query, limit) {
+  const terms = searchTerms(query);
+  if (terms.length === 0) return [];
+
+  const ready = new Map(
+    documents.filter((d) => d.status === "ready").map((d) => [d.id, d])
+  );
+
+  return chunks
+    .filter((chunk) => ready.has(chunk.documentId))
+    .map((chunk) => {
+      const found = new Set(
+        [...chunk.text.matchAll(termsPattern(terms))].map((m) =>
+          m[0].toLowerCase()
+        )
+      );
+      const matched = terms.filter((term) =>
+        [...found].some((word) => word.startsWith(term))
+      );
+      return { chunk, score: matched.length / terms.length };
+    })
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(({ chunk, score }) => ({
+      documentId: chunk.documentId,
+      documentTitle: ready.get(chunk.documentId).title,
+      chunkId: chunk.id,
+      snippet: chunk.text,
+      score: Math.round(score * 100) / 100,
+    }));
+}
 
 // Fakes the background worker: pending -> processing -> ready (or failed
 // when the filename contains "fail", to try the error state).
@@ -120,6 +161,22 @@ export const handlers = [
     simulateProcessing(doc);
 
     return HttpResponse.json(doc, { status: 201 });
+  }),
+
+  // GET /search?q=…&limit=…: best-matching passages of ready documents.
+  http.get(`${API_URL}/search`, async ({ request }) => {
+    await delay();
+    const denied = unauthorized(request);
+    if (denied) return denied;
+
+    const url = new URL(request.url);
+    const q = (url.searchParams.get("q") ?? "").trim();
+    if (q.length < MIN_QUERY_LENGTH || q.length > MAX_QUERY_LENGTH) {
+      return errorResponse(400, "q must be 2-200 characters");
+    }
+    const limit = Math.min(Number(url.searchParams.get("limit")) || 20, 50);
+
+    return HttpResponse.json({ query: q, results: searchChunks(q, limit) });
   }),
 
   // Overrides the backend's stub GET /documents/:id until it reads Postgres.

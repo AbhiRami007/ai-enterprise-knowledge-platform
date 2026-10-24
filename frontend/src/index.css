@@ -337,6 +337,57 @@ a.doc-title:focus-visible {
   overflow-wrap: anywhere;
 }
 
+/* Search */
+
+.search-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.search-form input {
+  flex: 1;
+  min-width: 0;
+}
+
+.search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.search-result {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.search-result p {
+  margin: 6px 0;
+}
+
+mark {
+  padding: 0 2px;
+  border-radius: 3px;
+  background: var(--warning-bg);
+  color: inherit;
+  font-weight: 600;
+}
+
+/* Hidden on screen but still read by screen readers. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .danger-zone p {
   margin: 0 0 12px;
 }
