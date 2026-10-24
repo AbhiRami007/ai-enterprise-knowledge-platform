@@ -10,6 +10,7 @@ import {
 } from "typeorm";
 import { Tenant } from "../../tenants/entities/tenant.entity.js";
 import { Role } from "../enums/role.enum.js";
+import { UserStatus } from "../enums/user-status.enum.js";
 
 @Entity("users")
 export class User {
@@ -40,6 +41,13 @@ export class User {
   // Disabled users cannot log in or refresh tokens.
   @Column({ name: "is_active", type: "boolean", default: true })
   isActive!: boolean;
+
+  // Default active: users created by an admin or seed:admin need no approval.
+  @Column({ type: "enum", enum: UserStatus, default: UserStatus.Active })
+  status!: UserStatus;
+
+  @Column({ name: "rejected_at", type: "timestamptz", nullable: true })
+  rejectedAt!: Date | null;
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;

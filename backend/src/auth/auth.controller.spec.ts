@@ -6,18 +6,26 @@ import { describe, beforeEach, it, expect, jest } from "@jest/globals";
 import type { Request, Response } from "express";
 import { Role } from "../users/enums/role.enum.js";
 import { REFRESH_TOKEN_COOKIE } from "./refresh-token.cookie.js";
+import { SignupService } from "./signup.service.js";
 
 describe("AuthController", () => {
   let controller: AuthController;
 
   const mockAuthService = {
-    login: jest.fn<(email: string, password: string) => Promise<object | null>>(),
+    login:
+      jest.fn<(email: string, password: string) => Promise<object | null>>(),
     refresh: jest.fn<(refreshToken: string) => Promise<object | null>>(),
     logout: jest.fn<(refreshToken: string) => Promise<void>>(),
     logoutAll: jest.fn<(userId: string) => Promise<void>>(),
     changePassword:
-      jest.fn<(userId: string, current: string, next: string) => Promise<object>>(),
+      jest.fn<
+        (userId: string, current: string, next: string) => Promise<object>
+      >(),
     getProfile: jest.fn<(userId: string) => Promise<object>>(),
+  };
+
+  const mockSignupService = {
+    signup: jest.fn<(dto: object) => Promise<object>>(),
   };
 
   const user = { sub: "user-1", role: Role.Viewer, tenantId: "tenant-1" };
@@ -29,12 +37,16 @@ describe("AuthController", () => {
     expiresIn: 900,
     refreshTokenExpiresAt: new Date("2026-11-01T00:00:00Z"),
   };
-  const body = { accessToken: "Valid-JWT", tokenType: "Bearer", expiresIn: 900 };
+  const body = {
+    accessToken: "Valid-JWT",
+    tokenType: "Bearer",
+    expiresIn: 900,
+  };
 
-  let res: { cookie: jest.Mock; clearCookie: jest.Mock };
+  let res: { cookie: jest.Mock; clearCookie: jest.Mock; status: jest.Mock };
 
   const reqWithCookie = (token?: string) =>
-    ({ cookies: token ? { [REFRESH_TOKEN_COOKIE]: token } : {} }) as Request;
+    ({ cookies: token ? { [REFRESH_TOKEN_COOKIE]: token } : {} } as Request);
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -44,11 +56,12 @@ describe("AuthController", () => {
           provide: AuthService,
           useValue: mockAuthService,
         },
+        { provide: SignupService, useValue: mockSignupService },
       ],
     }).compile();
 
     controller = module.get<AuthController>(AuthController);
-    res = { cookie: jest.fn(), clearCookie: jest.fn() };
+    res = { cookie: jest.fn(), clearCookie: jest.fn(), status: jest.fn() };
   });
 
   it("should return the access token and set the refresh cookie on login", async () => {
@@ -63,7 +76,10 @@ describe("AuthController", () => {
     expect(res.cookie).toHaveBeenCalledWith(
       REFRESH_TOKEN_COOKIE,
       "new-refresh-token",
-      expect.objectContaining({ httpOnly: true, expires: tokens.refreshTokenExpiresAt })
+      expect.objectContaining({
+        httpOnly: true,
+        expires: tokens.refreshTokenExpiresAt,
+      })
     );
   });
 
@@ -109,7 +125,10 @@ describe("AuthController", () => {
     mockAuthService.refresh.mockResolvedValue(null);
 
     await expect(
-      controller.refresh(reqWithCookie("used-token"), res as unknown as Response)
+      controller.refresh(
+        reqWithCookie("used-token"),
+        res as unknown as Response
+      )
     ).rejects.toThrow(UnauthorizedException);
   });
 
@@ -174,5 +193,53 @@ describe("AuthController", () => {
       "Password123!",
       "a-longer-passphrase"
     );
+  });
+
+  it("should log in the founder of a new company on signup", async () => {
+    mockSignupService.signup.mockResolvedValue({
+      kind: "created",
+      tenant: { id: "tenant-2", name: "Initech" },
+      tokens,
+    });
+
+    const result = await controller.signup(
+      {
+        companyName: "Initech",
+        email: "founder@initech.test",
+        password: "a-longer-passphrase",
+      },
+      res as unknown as Response
+    );
+
+    expect(result).toEqual(body);
+    expect(res.cookie).toHaveBeenCalledWith(
+      REFRESH_TOKEN_COOKIE,
+      "new-refresh-token",
+      expect.anything()
+    );
+    expect(res.status).not.toHaveBeenCalled();
+  });
+
+  it("should answer 202 without tokens for a join request", async () => {
+    mockSignupService.signup.mockResolvedValue({
+      kind: "pending",
+      tenant: { id: "tenant-1", name: "Acme Corp" },
+    });
+
+    const result = await controller.signup(
+      {
+        tenantId: "tenant-1",
+        email: "new@acme.test",
+        password: "a-longer-passphrase",
+      },
+      res as unknown as Response
+    );
+
+    expect(res.status).toHaveBeenCalledWith(202);
+    expect(result).toEqual({
+      status: "pending",
+      tenant: { id: "tenant-1", name: "Acme Corp" },
+    });
+    expect(res.cookie).not.toHaveBeenCalled();
   });
 });

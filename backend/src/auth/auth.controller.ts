@@ -10,9 +10,14 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import {
+  ApiAcceptedResponse,
   ApiBadRequestResponse,
   ApiBearerAuth,
+  ApiConflictResponse,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiNoContentResponse,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTooManyRequestsResponse,
@@ -20,7 +25,10 @@ import {
 } from "@nestjs/swagger";
 import type { Request, Response } from "express";
 import { AuthService } from "./auth.service.js";
+import { SignupService } from "./signup.service.js";
 import { LoginDto } from "./dto/login.dto.js";
+import { SignupDto } from "./dto/signup.dto.js";
+import { SignupPendingResponseDto } from "./dto/signup-pending-response.dto.js";
 import { ChangePasswordDto } from "./dto/change-password.dto.js";
 import { AccessTokenResponseDto } from "./dto/access-token-response.dto.js";
 import type { IssuedTokens } from "./types/issued-tokens.js";
@@ -38,9 +46,15 @@ import {
 // Slows down password guessing: 5 attempts per minute per IP.
 const PASSWORD_ATTEMPT_LIMIT = { limit: 5, windowMs: 60_000 };
 
+// Slows down scripted mass signups.
+const SIGNUP_LIMIT = { limit: 5, windowMs: 60_000 };
+
 @Controller("api/v1/auth")
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly signupService: SignupService
+  ) {}
 
   @Public()
   @RateLimit(PASSWORD_ATTEMPT_LIMIT)
@@ -59,6 +73,10 @@ export class AuthController {
   @ApiUnauthorizedResponse({
     description: "Invalid credentials",
   })
+  @ApiForbiddenResponse({
+    description:
+      "Correct password, but the account is waiting for approval (code ACCOUNT_PENDING) or was declined (code ACCOUNT_REJECTED)",
+  })
   @ApiTooManyRequestsResponse({
     description: "Too many login attempts",
   })
@@ -74,6 +92,50 @@ export class AuthController {
     }
 
     return this.sendTokens(res, tokens);
+  }
+
+  @Public()
+  @RateLimit(SIGNUP_LIMIT)
+  @Post("signup")
+  @ApiOperation({
+    summary: "Sign up: join an existing company or create a new one",
+    description:
+      "With tenantId: creates a pending account that an admin of that company must approve (202, no tokens). " +
+      "With companyName: creates the company with the user as its admin and logs them in (201).",
+  })
+  @ApiCreatedResponse({
+    type: AccessTokenResponseDto,
+    description:
+      "Company created; access token issued and refresh token set as an httpOnly cookie",
+  })
+  @ApiAcceptedResponse({
+    type: SignupPendingResponseDto,
+    description: "Join request created; waiting for an admin's approval",
+  })
+  @ApiBadRequestResponse({
+    description: "Invalid input, or both tenantId and companyName sent",
+  })
+  @ApiNotFoundResponse({
+    description: "tenantId doesn't match any company",
+  })
+  @ApiConflictResponse({
+    description: "Email already registered, or a company with this name exists",
+  })
+  @ApiTooManyRequestsResponse({
+    description: "Too many signups",
+  })
+  async signup(
+    @Body() body: SignupDto,
+    @Res({ passthrough: true }) res: Response
+  ) {
+    const result = await this.signupService.signup(body);
+
+    if (result.kind === "pending") {
+      res.status(202);
+      return { status: "pending", tenant: result.tenant };
+    }
+
+    return this.sendTokens(res, result.tokens);
   }
 
   @Public()

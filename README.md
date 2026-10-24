@@ -104,15 +104,26 @@ Every route requires `Authorization: Bearer <accessToken>` unless marked public.
 | Method | Path | Auth | Description |
 | --- | --- | --- | --- |
 | `GET` | `/` | Public | Health / banner text |
+| `POST` | `/api/v1/auth/signup` | Public | Create a company (you become its admin) or ask to join one (pending until an admin approves) |
 | `POST` | `/api/v1/auth/login` | Public | Email + password → access and refresh tokens |
 | `POST` | `/api/v1/auth/refresh` | Public | Refresh token → new token pair |
 | `POST` | `/api/v1/auth/logout` | Public | Revoke a refresh token |
 | `POST` | `/api/v1/auth/logout-all` | Bearer | Revoke every session of the current user |
 | `PATCH` | `/api/v1/auth/password` | Bearer | Change password (ends other sessions) |
 | `GET` | `/api/v1/auth/me` | Bearer | Current user's profile |
-| `GET` | `/api/v1/users` | Bearer, admin | List the users in the admin's tenant |
+| `GET` | `/api/v1/tenants/search?q=` | Public | Find companies by name for signup (min 2 characters, max 10 results) |
+| `GET` | `/api/v1/users` | Bearer, admin | List the users in the admin's tenant, including join requests |
 | `POST` | `/api/v1/users` | Bearer, admin | Create a user in the admin's tenant |
+| `PATCH` | `/api/v1/users/:id/approve` | Bearer, admin | Approve a pending or rejected join request, with a role |
+| `PATCH` | `/api/v1/users/:id/reject` | Bearer, admin | Reject a pending join request (kept, can be approved later) |
 | `GET` | `/api/v1/documents/:id` | Bearer | Get a document by UUID (stub) |
+
+### Signup and join requests
+
+- **New company:** `POST /auth/signup` with `companyName` creates the tenant and makes you its admin in one transaction, and logs you in (`201`). Company names are unique, ignoring case.
+- **Existing company:** with `tenantId` instead, you get a `pending` account (`202`, no tokens). Logging in returns `403` with `code: "ACCOUNT_PENDING"` until an admin of that company approves you; after a rejection it's `ACCOUNT_REJECTED`. Rejected requests are kept, so the email can't re-apply, and an admin can still approve them later.
+- `GET /tenants/search` is public so the signup page can offer a company picker. It only returns ids and names, needs 2+ characters, returns at most 10 results and is rate-limited, but it does let anyone look up which companies use the platform.
+- There is no email verification yet: admin approval is the check for people joining a company.
 
 ### Authentication flow
 

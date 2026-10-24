@@ -30,11 +30,27 @@ export class UserRepository {
     });
   }
 
+  // Tenant in the WHERE clause, so an admin can never load another
+  // company's user by guessing its id.
+  findByIdInTenant(id: string, tenantId: string): Promise<User | null> {
+    return this.repository.findOneBy({ id, tenantId });
+  }
+
   async updatePasswordHash(id: string, passwordHash: string) {
     await this.repository.update({ id }, { passwordHash });
   }
 
-  create(data: Pick<User, "email" | "passwordHash" | "role" | "tenantId">) {
+  async updateStatus(
+    id: string,
+    fields: Partial<Pick<User, "status" | "role" | "rejectedAt">>
+  ) {
+    await this.repository.update({ id }, fields);
+  }
+
+  create(
+    data: Pick<User, "email" | "passwordHash" | "role" | "tenantId"> &
+      Partial<Pick<User, "status">>
+  ) {
     return this.repository.save(this.repository.create(data));
   }
 }

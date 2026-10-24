@@ -8,6 +8,7 @@ import { User } from "../users/entities/user.entity.js";
 import type { IssuedTokens } from "./types/issued-tokens.js";
 import { RefreshToken } from "./entities/refresh-token.entity.js";
 import type { JwtPayload } from "./types/jwt-payload.js";
+import { canSignIn } from "../users/user-access.js";
 
 export const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 
@@ -78,7 +79,7 @@ export class TokensService {
       return null;
     }
 
-    if (stored.expiresAt <= new Date() || !stored.user.isActive) {
+    if (stored.expiresAt <= new Date() || !canSignIn(stored.user)) {
       return null;
     }
 

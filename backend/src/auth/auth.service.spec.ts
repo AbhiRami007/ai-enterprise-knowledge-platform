@@ -6,6 +6,7 @@ import * as bcrypt from "bcryptjs";
 import { Role } from "../users/enums/role.enum.js";
 import { UserRepository } from "../users/user.repository.js";
 import { TokensService } from "./tokens.service.js";
+import { UserStatus } from "../users/enums/user-status.enum.js";
 
 describe("AuthService", () => {
   let service: AuthService;
@@ -18,6 +19,8 @@ describe("AuthService", () => {
     role: Role.Viewer,
     tenantId: "tenant-1",
     isActive: true,
+    status: UserStatus.Active,
+    rejectedAt: null,
     createdAt: new Date("2026-01-01T00:00:00Z"),
     updatedAt: new Date("2026-01-01T00:00:00Z"),
   };
@@ -90,6 +93,39 @@ describe("AuthService", () => {
     expect(result).toBe(null);
   });
 
+  it.each([
+    [UserStatus.Pending, "ACCOUNT_PENDING"],
+    [UserStatus.Rejected, "ACCOUNT_REJECTED"],
+  ])(
+    "should refuse a %s user with a 403 and code %s after a correct password",
+    async (status, code) => {
+      mockUserRepository.findByEmail.mockResolvedValue({
+        ...mockResolvedData,
+        status,
+      });
+      mockTokensService.issue.mockClear();
+
+      await expect(
+        service.login("user@example.com", "Password123!")
+      ).rejects.toMatchObject({
+        status: 403,
+        response: expect.objectContaining({ code }),
+      });
+      expect(mockTokensService.issue).not.toHaveBeenCalled();
+    }
+  );
+
+  it("should not reveal a pending account to someone with the wrong password", async () => {
+    mockUserRepository.findByEmail.mockResolvedValue({
+      ...mockResolvedData,
+      status: UserStatus.Pending,
+    });
+
+    const result = await service.login("user@example.com", "WrongPassword!");
+
+    expect(result).toBe(null);
+  });
+
   it("should reject inactive users", async () => {
     mockUserRepository.findByEmail.mockResolvedValue({
       ...mockResolvedData,
@@ -115,6 +151,8 @@ describe("AuthService", () => {
       role: Role.Viewer,
       tenantId: "tenant-1",
       isActive: true,
+      status: UserStatus.Active,
+      rejectedAt: null,
       createdAt: mockResolvedData.createdAt,
       tenant: { id: "tenant-1", name: "Acme Corp" },
     });
