@@ -5,6 +5,7 @@ import {
   HttpCode,
   Patch,
   Post,
+  Res,
   UnauthorizedException,
 } from "@nestjs/common";
 import {
@@ -16,6 +17,7 @@ import {
   ApiTooManyRequestsResponse,
   ApiUnauthorizedResponse,
 } from "@nestjs/swagger";
+import type { Response } from "express";
 import { AuthService } from "./auth.service.js";
 import { LoginDto } from "./dto/login.dto.js";
 import { RefreshTokenDto } from "./dto/refresh-token.dto.js";
@@ -26,6 +28,7 @@ import { CurrentUser } from "./decorators/current-user.decorator.js";
 import { RateLimit } from "./decorators/rate-limit.decorator.js";
 import type { JwtPayload } from "./types/jwt-payload.js";
 import { UserResponseDto } from "../users/dto/user-response.dto.js";
+import { setRefreshCookie } from "./refresh-token.cookie.js";
 
 // Slows down password guessing: 5 attempts per minute per IP.
 const PASSWORD_ATTEMPT_LIMIT = { limit: 5, windowMs: 60_000 };
@@ -55,14 +58,24 @@ export class AuthController {
     description: "Too many login attempts",
   })
   // Input shape is validated by the global ValidationPipe before this runs.
-  async login(@Body() body: LoginDto) {
+  async login(
+    @Body() body: LoginDto,
+    @Res({ passthrough: true }) res: Response
+  ) {
     const tokens = await this.authService.login(body.email, body.password);
 
     if (!tokens) {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    return tokens;
+    setRefreshCookie(res, tokens.refreshToken, tokens.refreshTokenExpiresAt);
+
+    // The refresh token travels only in the httpOnly cookie, never in the body.
+    return {
+      accessToken: tokens.accessToken,
+      tokenType: tokens.tokenType,
+      expiresIn: tokens.expiresIn,
+    };
   }
 
   @Public()

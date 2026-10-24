@@ -38,11 +38,12 @@ export class TokensService {
       tenantId: user.tenantId,
     };
     const refreshToken = randomBytes(32).toString("base64url");
+    const refreshTokenExpiresAt = new Date(Date.now() + this.refreshTtlMs);
 
     await this.refreshTokens.insert({
       userId: user.id,
       tokenHash: hashToken(refreshToken),
-      expiresAt: new Date(Date.now() + this.refreshTtlMs),
+      expiresAt: refreshTokenExpiresAt,
     });
 
     return {
@@ -50,6 +51,7 @@ export class TokensService {
       refreshToken,
       tokenType: "Bearer",
       expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+      refreshTokenExpiresAt,
     };
   }
 
