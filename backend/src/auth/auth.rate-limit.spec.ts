@@ -5,6 +5,7 @@ import { describe, beforeAll, afterAll, it, expect, jest } from "@jest/globals";
 import { AuthController } from "./auth.controller.js";
 import { AuthService } from "./auth.service.js";
 import { RateLimitGuard } from "./guards/rate-limit.guard.js";
+import { SignupService } from "./signup.service.js";
 
 // Runs the real HTTP pipeline so the @RateLimit() limits are exercised end to end.
 describe("AuthController rate limiting", () => {
@@ -19,6 +20,7 @@ describe("AuthController rate limiting", () => {
           provide: AuthService,
           useValue: { login: jest.fn<() => Promise<null>>().mockResolvedValue(null) },
         },
+        { provide: SignupService, useValue: {} },
         { provide: APP_GUARD, useClass: RateLimitGuard },
       ],
     }).compile();

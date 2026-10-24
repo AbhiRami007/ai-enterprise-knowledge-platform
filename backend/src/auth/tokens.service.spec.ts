@@ -7,12 +7,14 @@ import { RefreshToken } from "./entities/refresh-token.entity.js";
 import { User } from "../users/entities/user.entity.js";
 import { Role } from "../users/enums/role.enum.js";
 import type { Repository } from "typeorm";
+import { UserStatus } from "../users/enums/user-status.enum.js";
 
 const user = {
   id: "user-1",
   role: Role.Viewer,
   tenantId: "tenant-1",
   isActive: true,
+  status: UserStatus.Active,
 } as User;
 
 const sha256 = (value: string) =>
@@ -118,6 +120,15 @@ describe("TokensService", () => {
     );
 
     await expect(service.rotate("inactive")).resolves.toBeNull();
+    expect(repository.insert).not.toHaveBeenCalled();
+  });
+
+  it("should reject a refresh token for a user who isn't approved", async () => {
+    repository.findOne.mockResolvedValue(
+      storedToken({ user: { ...user, status: UserStatus.Rejected } as User })
+    );
+
+    await expect(service.rotate("rejected")).resolves.toBeNull();
     expect(repository.insert).not.toHaveBeenCalled();
   });
 

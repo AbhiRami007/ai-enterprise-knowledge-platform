@@ -3,9 +3,18 @@ import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module.js";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
+import cookieParser from "cookie-parser";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.use(cookieParser());
+
+  // credentials lets the browser send the refresh cookie cross-origin;
+  // that requires an exact origin, browsers reject "*" with credentials.
+  app.enableCors({
+    origin: process.env.FRONTEND_ORIGIN ?? "http://localhost:5173",
+    credentials: true,
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({

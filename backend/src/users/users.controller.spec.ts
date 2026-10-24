@@ -9,6 +9,8 @@ describe("UsersController", () => {
 
   const mockUsersService = {
     create: jest.fn<(tenantId: string, dto: object) => Promise<object>>(),
+    findAllInTenant: jest.fn<(tenantId: string) => Promise<object[]>>(),
+    delete: jest.fn<(tenantId: string, adminId: string, userId: string) => Promise<void>>(),
   };
 
   beforeEach(async () => {
@@ -31,5 +33,31 @@ describe("UsersController", () => {
 
     expect(result).toEqual({ id: "user-2" });
     expect(mockUsersService.create).toHaveBeenCalledWith("tenant-1", body);
+  });
+
+  it("should list only the users of the admin's own tenant", async () => {
+    mockUsersService.findAllInTenant.mockResolvedValue([{ id: "user-2" }]);
+
+    const result = await controller.findAll({
+      sub: "admin-1",
+      role: Role.Admin,
+      tenantId: "tenant-1",
+    });
+
+    expect(result).toEqual([{ id: "user-2" }]);
+    expect(mockUsersService.findAllInTenant).toHaveBeenCalledWith("tenant-1");
+  });
+
+  it("should delete within the admin's tenant, passing who is asking", async () => {
+    await controller.delete(
+      { sub: "admin-1", role: Role.Admin, tenantId: "tenant-1" },
+      { id: "user-2" }
+    );
+
+    expect(mockUsersService.delete).toHaveBeenCalledWith(
+      "tenant-1",
+      "admin-1",
+      "user-2"
+    );
   });
 });

@@ -1,6 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { User } from "../entities/user.entity.js";
 import { Role } from "../enums/role.enum.js";
+import { UserStatus } from "../enums/user-status.enum.js";
 
 // The API contract for a user. The password hash is never exposed.
 export class UserResponseDto {
@@ -19,6 +20,12 @@ export class UserResponseDto {
   @ApiProperty()
   isActive!: boolean;
 
+  @ApiProperty({ enum: UserStatus })
+  status!: UserStatus;
+
+  @ApiProperty({ type: Date, nullable: true })
+  rejectedAt!: Date | null;
+
   @ApiProperty()
   createdAt!: Date;
 
@@ -29,6 +36,8 @@ export class UserResponseDto {
       role: entity.role,
       tenantId: entity.tenantId,
       isActive: entity.isActive,
+      status: entity.status,
+      rejectedAt: entity.rejectedAt,
       createdAt: entity.createdAt,
     };
   }

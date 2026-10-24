@@ -5,9 +5,10 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { createHash, randomBytes } from "node:crypto";
 import { IsNull, Repository } from "typeorm";
 import { User } from "../users/entities/user.entity.js";
-import { TokenResponseDto } from "./dto/token-response.dto.js";
+import type { IssuedTokens } from "./types/issued-tokens.js";
 import { RefreshToken } from "./entities/refresh-token.entity.js";
 import type { JwtPayload } from "./types/jwt-payload.js";
+import { canSignIn } from "../users/user-access.js";
 
 export const ACCESS_TOKEN_TTL_SECONDS = 15 * 60;
 
@@ -31,18 +32,19 @@ export class TokensService {
       Number(config.get<string>("REFRESH_TOKEN_TTL_DAYS") ?? 7) * DAY_MS;
   }
 
-  async issue(user: User): Promise<TokenResponseDto> {
+  async issue(user: User): Promise<IssuedTokens> {
     const payload: JwtPayload = {
       sub: user.id,
       role: user.role,
       tenantId: user.tenantId,
     };
     const refreshToken = randomBytes(32).toString("base64url");
+    const refreshTokenExpiresAt = new Date(Date.now() + this.refreshTtlMs);
 
     await this.refreshTokens.insert({
       userId: user.id,
       tokenHash: hashToken(refreshToken),
-      expiresAt: new Date(Date.now() + this.refreshTtlMs),
+      expiresAt: refreshTokenExpiresAt,
     });
 
     return {
@@ -50,11 +52,12 @@ export class TokensService {
       refreshToken,
       tokenType: "Bearer",
       expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+      refreshTokenExpiresAt,
     };
   }
 
   // Exchanges a refresh token for a new pair. Returns null if the token can't be used.
-  async rotate(refreshToken: string): Promise<TokenResponseDto | null> {
+  async rotate(refreshToken: string): Promise<IssuedTokens | null> {
     const stored = await this.refreshTokens.findOne({
       where: { tokenHash: hashToken(refreshToken) },
       relations: { user: true },
@@ -76,7 +79,7 @@ export class TokensService {
       return null;
     }
 
-    if (stored.expiresAt <= new Date() || !stored.user.isActive) {
+    if (stored.expiresAt <= new Date() || !canSignIn(stored.user)) {
       return null;
     }
 

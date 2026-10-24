@@ -1,13 +1,26 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from "@nestjs/common";
 import { UserRepository } from "../users/user.repository.js";
 import * as bcrypt from "bcryptjs";
-import { UserResponseDto } from "../users/dto/user-response.dto.js";
+import { ProfileResponseDto } from "../users/dto/profile-response.dto.js";
+import { UserStatus } from "../users/enums/user-status.enum.js";
 import { hashPassword } from "../users/password.js";
+import { canSignIn } from "../users/user-access.js";
 import { TokensService } from "./tokens.service.js";
+
+// 403 with a machine-readable code, so the login page can explain why.
+function accountNotActive(code: string, message: string) {
+  return new ForbiddenException({
+    statusCode: 403,
+    error: "Forbidden",
+    code,
+    message,
+  });
+}
 
 // Compared against when the email is unknown, so response time doesn't reveal which emails exist.
 const DUMMY_PASSWORD_HASH =
@@ -30,6 +43,20 @@ export class AuthService {
 
     if (!user || !passwordValid || !user.isActive) {
       return null;
+    }
+
+    // Only after a correct password, so this reveals nothing to a guesser.
+    if (user.status === UserStatus.Pending) {
+      throw accountNotActive(
+        "ACCOUNT_PENDING",
+        "Your account is waiting for approval by your company's admin"
+      );
+    }
+    if (user.status === UserStatus.Rejected) {
+      throw accountNotActive(
+        "ACCOUNT_REJECTED",
+        "Your request to join was declined. Contact your company's admin"
+      );
     }
 
     return this.tokensService.issue(user);
@@ -55,7 +82,7 @@ export class AuthService {
   ) {
     const user = await this.userRepository.findById(userId);
 
-    if (!user || !user.isActive) {
+    if (!user || !canSignIn(user)) {
       throw new UnauthorizedException();
     }
 
@@ -79,12 +106,12 @@ export class AuthService {
   }
 
   async getProfile(userId: string) {
-    const user = await this.userRepository.findById(userId);
+    const user = await this.userRepository.findByIdWithTenant(userId);
 
-    if (!user || !user.isActive) {
+    if (!user || !canSignIn(user) || !user.tenant) {
       throw new UnauthorizedException();
     }
 
-    return UserResponseDto.fromEntity(user);
+    return ProfileResponseDto.fromUserAndTenant(user, user.tenant);
   }
 }
