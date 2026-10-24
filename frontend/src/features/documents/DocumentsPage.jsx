@@ -1,35 +1,24 @@
 import { useState } from "react";
-import { useSelector } from "react-redux";
 import { Link, useLocation } from "react-router";
-import { api, useGetDocumentsQuery, useMeQuery } from "../../app/api.js";
+import { useMeQuery } from "../../app/api.js";
 import { formatBytes, formatDate, formatFileType } from "../../utils/format.js";
 import { canEditDocuments } from "../auth/permissions.js";
 import StatusBadge from "./StatusBadge.jsx";
 import UploadForm from "./UploadForm.jsx";
-
-const POLL_MS = 3000;
-const selectDocumentsResult = api.endpoints.getDocuments.select();
-
-function isInProgress(doc) {
-  return doc.status === "pending" || doc.status === "processing";
-}
+import { useDocuments } from "./useDocuments.js";
 
 function DocumentsPage() {
-  const [showUpload, setShowUpload] = useState(false);
+  const location = useLocation();
+  // openUpload: set by the home page's "Upload your first document" button.
+  const [showUpload, setShowUpload] = useState(
+    location.state?.openUpload ?? false
+  );
   const [uploadedTitle, setUploadedTitle] = useState(null);
   const { data: user } = useMeQuery();
   // Set by DocumentDetailPage after a delete.
-  const deletedTitle = useLocation().state?.deletedTitle;
+  const deletedTitle = location.state?.deletedTitle;
 
-  // Read the cached list first, so polling runs only while something is
-  // still being processed and stops once every document is ready or failed.
-  const cached = useSelector(selectDocumentsResult);
-  const polling = cached.data?.some(isInProgress) ?? false;
-
-  const { data: documents, isLoading, error, refetch } = useGetDocumentsQuery(
-    undefined,
-    { pollingInterval: polling ? POLL_MS : 0, skipPollingIfUnfocused: true }
-  );
+  const { data: documents, isLoading, error, refetch } = useDocuments();
 
   function handleUploaded(document) {
     setShowUpload(false);
