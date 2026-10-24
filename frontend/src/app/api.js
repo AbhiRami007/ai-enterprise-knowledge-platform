@@ -160,6 +160,10 @@ export const api = createApi({
       query: (id) => ({ url: `/users/${id}/reject`, method: "PATCH" }),
       invalidatesTags: [{ type: "User", id: "LIST" }],
     }),
+    deleteUser: builder.mutation({
+      query: (id) => ({ url: `/users/${id}`, method: "DELETE" }),
+      invalidatesTags: [{ type: "User", id: "LIST" }],
+    }),
     // Public: the signup page's company picker. Real backend endpoint.
     searchTenants: builder.query({
       query: (q) => ({ url: "/tenants/search", params: { q } }),
@@ -222,6 +226,7 @@ export const {
   useCreateUserMutation,
   useApproveUserMutation,
   useRejectUserMutation,
+  useDeleteUserMutation,
   useSearchTenantsQuery,
   useSignupMutation,
   useGetDocumentsQuery,

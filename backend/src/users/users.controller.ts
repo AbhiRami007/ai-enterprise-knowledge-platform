@@ -1,10 +1,20 @@
-import { Body, Controller, Get, Param, Patch, Post } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+} from "@nestjs/common";
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
   ApiForbiddenResponse,
+  ApiNoContentResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -106,5 +116,28 @@ export class UsersController {
   })
   reject(@CurrentUser() admin: JwtPayload, @Param() { id }: UserIdParamDto) {
     return this.usersService.reject(admin.tenantId, id);
+  }
+
+  @Delete(":id")
+  @HttpCode(204)
+  @ApiOperation({
+    summary: "Delete a user or join request in the admin's tenant",
+    description:
+      "Removes the account and all its sessions. Access tokens already issued stay valid until they expire (up to 15 minutes).",
+  })
+  @ApiNoContentResponse({
+    description: "Deleted",
+  })
+  @ApiForbiddenResponse({
+    description: "Caller is not an admin",
+  })
+  @ApiNotFoundResponse({
+    description: "No user with this id in the admin's tenant",
+  })
+  @ApiConflictResponse({
+    description: "Deleting yourself, or the company's last admin",
+  })
+  async delete(@CurrentUser() admin: JwtPayload, @Param() { id }: UserIdParamDto) {
+    await this.usersService.delete(admin.tenantId, admin.sub, id);
   }
 }

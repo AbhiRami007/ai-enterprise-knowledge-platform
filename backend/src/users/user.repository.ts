@@ -2,6 +2,8 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User } from "./entities/user.entity.js";
+import { Role } from "./enums/role.enum.js";
+import { UserStatus } from "./enums/user-status.enum.js";
 
 @Injectable()
 export class UserRepository {
@@ -34,6 +36,19 @@ export class UserRepository {
   // company's user by guessing its id.
   findByIdInTenant(id: string, tenantId: string): Promise<User | null> {
     return this.repository.findOneBy({ id, tenantId });
+  }
+
+  countActiveAdmins(tenantId: string): Promise<number> {
+    return this.repository.countBy({
+      tenantId,
+      role: Role.Admin,
+      status: UserStatus.Active,
+    });
+  }
+
+  // Refresh tokens go too: refresh_tokens.user_id is ON DELETE CASCADE.
+  async delete(id: string) {
+    await this.repository.delete({ id });
   }
 
   async updatePasswordHash(id: string, passwordHash: string) {

@@ -69,6 +69,32 @@ export class UsersService {
     return this.reload(userId);
   }
 
+  // Removes the account and all its sessions. Works for members and for join
+  // requests (deleting a rejected request lets that email sign up again).
+  async delete(tenantId: string, adminId: string, userId: string) {
+    if (userId === adminId) {
+      throw new ConflictException("You can't delete your own account");
+    }
+
+    const user = await this.userRepository.findByIdInTenant(userId, tenantId);
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    // Defensive: the caller is an admin too, but their token's role could be
+    // stale. A company must always keep someone who can manage it.
+    if (user.role === Role.Admin && user.status === UserStatus.Active) {
+      const admins = await this.userRepository.countActiveAdmins(tenantId);
+      if (admins <= 1) {
+        throw new ConflictException(
+          "This is the company's last admin. Make someone else an admin first"
+        );
+      }
+    }
+
+    await this.userRepository.delete(userId);
+  }
+
   // 404 for another tenant's user or one in the wrong state, so an admin
   // learns nothing about users outside their own company.
   private async findRequest(

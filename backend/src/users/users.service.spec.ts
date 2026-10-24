@@ -15,6 +15,8 @@ describe("UsersService", () => {
     findByIdInTenant: jest.Mock<(id: string, tenantId: string) => Promise<User | null>>;
     findById: jest.Mock<(id: string) => Promise<User | null>>;
     updateStatus: jest.Mock<(id: string, fields: Partial<User>) => Promise<void>>;
+    countActiveAdmins: jest.Mock<(tenantId: string) => Promise<number>>;
+    delete: jest.Mock<(id: string) => Promise<void>>;
     create: jest.Mock<(data: Partial<User>) => Promise<User>>;
   };
   let service: UsersService;
@@ -36,6 +38,21 @@ describe("UsersService", () => {
         .fn<(id: string, fields: Partial<User>) => Promise<void>>()
         .mockImplementation(async (id, fields) => {
           Object.assign(rows.get(id)!, fields);
+        }),
+      countActiveAdmins: jest
+        .fn<(tenantId: string) => Promise<number>>()
+        .mockImplementation(async (tenantId) =>
+          [...rows.values()].filter(
+            (u) =>
+              u.tenantId === tenantId &&
+              u.role === Role.Admin &&
+              u.status === UserStatus.Active
+          ).length
+        ),
+      delete: jest
+        .fn<(id: string) => Promise<void>>()
+        .mockImplementation(async (id) => {
+          rows.delete(id);
         }),
       findAllByTenant: jest
         .fn<(tenantId: string) => Promise<User[]>>()
@@ -74,6 +91,8 @@ describe("UsersService", () => {
     request("rejected-acme", "tenant-1", UserStatus.Rejected);
     request("active-acme", "tenant-1", UserStatus.Active);
     request("pending-globex", "tenant-2", UserStatus.Pending);
+    request("admin-acme", "tenant-1", UserStatus.Active);
+    rows.get("admin-acme")!.role = Role.Admin;
   });
 
   it("should create a viewer in the given tenant with a hashed password", async () => {
@@ -184,6 +203,43 @@ describe("UsersService", () => {
         NotFoundException
       );
       expect(repository.updateStatus).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("delete", () => {
+    it("should delete a member of the admin's company", async () => {
+      await service.delete("tenant-1", "admin-acme", "active-acme");
+
+      expect(repository.delete).toHaveBeenCalledWith("active-acme");
+      expect(await repository.findById("active-acme")).toBeNull();
+    });
+
+    it("should delete a rejected request, so the email can sign up again", async () => {
+      await service.delete("tenant-1", "admin-acme", "rejected-acme");
+
+      expect(repository.delete).toHaveBeenCalledWith("rejected-acme");
+    });
+
+    it("should 404 for another company's user", async () => {
+      await expect(
+        service.delete("tenant-1", "admin-acme", "pending-globex")
+      ).rejects.toThrow(NotFoundException);
+      expect(repository.delete).not.toHaveBeenCalled();
+    });
+
+    it("should refuse to let an admin delete themselves", async () => {
+      await expect(
+        service.delete("tenant-1", "admin-acme", "admin-acme")
+      ).rejects.toThrow(ConflictException);
+      expect(repository.delete).not.toHaveBeenCalled();
+    });
+
+    it("should refuse to delete the company's last admin", async () => {
+      // e.g. a caller whose token still says admin after losing the role
+      await expect(
+        service.delete("tenant-1", "someone-else", "admin-acme")
+      ).rejects.toThrow(/last admin/);
+      expect(repository.delete).not.toHaveBeenCalled();
     });
   });
 });

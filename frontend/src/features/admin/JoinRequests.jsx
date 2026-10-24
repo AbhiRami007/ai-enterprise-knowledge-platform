@@ -19,7 +19,7 @@ function actionErrorMessage(error) {
 
 // One request: pick a role, then approve. Pending ones can also be
 // rejected; rejected ones can only be approved (re-accepted).
-function RequestRow({ user, canReject, onDone }) {
+function RequestRow({ user, canReject, onDone, onDelete }) {
   const [role, setRole] = useState("viewer");
   const [approve, approveState] = useApproveUserMutation();
   const [reject, rejectState] = useRejectUserMutation();
@@ -88,6 +88,18 @@ function RequestRow({ user, canReject, onDone }) {
             {rejectState.isLoading ? "Declining…" : "Reject"}
           </button>
         )}
+        {/* Rejected only: deleting frees the email to sign up again. */}
+        {!canReject && (
+          <button
+            type="button"
+            className="button-secondary"
+            onClick={() => onDelete(user)}
+            disabled={busy}
+            aria-label={`Delete the request from ${user.email}`}
+          >
+            Delete…
+          </button>
+        )}
       </div>
     </li>
   );
@@ -95,19 +107,12 @@ function RequestRow({ user, canReject, onDone }) {
 
 // Pending requests stay visible at the top; rejected ones are collapsed but
 // can still be approved later.
-function JoinRequests({ users }) {
-  const [notice, setNotice] = useState(null);
+function JoinRequests({ users, onNotice, onDelete }) {
   const pending = users.filter((u) => u.status === "pending");
   const rejected = users.filter((u) => u.status === "rejected");
 
   return (
     <>
-      {notice && (
-        <p className="callout-success" role="status">
-          {notice}
-        </p>
-      )}
-
       {pending.length > 0 && (
         <section className="panel" aria-labelledby="pending-heading">
           <h2 id="pending-heading" className="panel-heading">
@@ -123,7 +128,7 @@ function JoinRequests({ users }) {
                 key={user.id}
                 user={user}
                 canReject
-                onDone={setNotice}
+                onDone={onNotice}
               />
             ))}
           </ul>
@@ -139,7 +144,8 @@ function JoinRequests({ users }) {
                 key={user.id}
                 user={user}
                 canReject={false}
-                onDone={setNotice}
+                onDone={onNotice}
+                onDelete={onDelete}
               />
             ))}
           </ul>

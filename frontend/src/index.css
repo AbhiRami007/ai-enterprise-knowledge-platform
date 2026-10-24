@@ -324,6 +324,11 @@ button:disabled {
   color: var(--accent-text);
 }
 
+.button-small {
+  padding: 4px 10px;
+  font-size: 0.8125rem;
+}
+
 .back-link {
   display: inline-block;
   margin-bottom: 12px;

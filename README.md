@@ -116,6 +116,7 @@ Every route requires `Authorization: Bearer <accessToken>` unless marked public.
 | `POST` | `/api/v1/users` | Bearer, admin | Create a user in the admin's tenant |
 | `PATCH` | `/api/v1/users/:id/approve` | Bearer, admin | Approve a pending or rejected join request, with a role |
 | `PATCH` | `/api/v1/users/:id/reject` | Bearer, admin | Reject a pending join request (kept, can be approved later) |
+| `DELETE` | `/api/v1/users/:id` | Bearer, admin | Delete a user or join request and all their sessions (not yourself, not the last admin) |
 | `GET` | `/api/v1/documents/:id` | Bearer | Get a document by UUID (stub) |
 
 ### Signup and join requests
@@ -124,6 +125,7 @@ Every route requires `Authorization: Bearer <accessToken>` unless marked public.
 - **Existing company:** with `tenantId` instead, you get a `pending` account (`202`, no tokens). Logging in returns `403` with `code: "ACCOUNT_PENDING"` until an admin of that company approves you; after a rejection it's `ACCOUNT_REJECTED`. Rejected requests are kept, so the email can't re-apply, and an admin can still approve them later.
 - `GET /tenants/search` is public so the signup page can offer a company picker. It only returns ids and names, needs 2+ characters, returns at most 10 results and is rate-limited, but it does let anyone look up which companies use the platform.
 - There is no email verification yet: admin approval is the check for people joining a company.
+- Deleting a user removes their account and refresh tokens. An access token issued before the delete keeps working until it expires (up to 15 minutes), because access tokens aren't checked against the database.
 
 ### Authentication flow
 

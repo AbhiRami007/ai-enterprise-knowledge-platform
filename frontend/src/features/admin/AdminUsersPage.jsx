@@ -5,6 +5,7 @@ import {
   useMeQuery,
 } from "../../app/api.js";
 import { formatDate } from "../../utils/format.js";
+import ConfirmDeleteUser from "./ConfirmDeleteUser.jsx";
 import JoinRequests from "./JoinRequests.jsx";
 
 // Same limits as the backend's CreateUserDto.
@@ -116,13 +117,20 @@ function AdminUsersPage() {
   const { data: me } = useMeQuery();
   const { data: users, isLoading, error, refetch } = useGetUsersQuery();
   const [showForm, setShowForm] = useState(false);
-  const [addedEmail, setAddedEmail] = useState(null);
+  // One success message for the whole page: added, approved, deleted…
+  const [notice, setNotice] = useState(null);
+  const [toDelete, setToDelete] = useState(null);
   // Join requests are listed separately, above the members table.
   const members = users?.filter((user) => user.status === "active") ?? [];
 
   function handleCreated(user) {
     setShowForm(false);
-    setAddedEmail(user.email);
+    setNotice(`${user.email} was added. They can log in with the starting password.`);
+  }
+
+  function handleDeleted(user) {
+    setToDelete(null);
+    setNotice(`${user.email} was deleted.`);
   }
 
   return (
@@ -138,7 +146,7 @@ function AdminUsersPage() {
           type="button"
           onClick={() => {
             setShowForm((open) => !open);
-            setAddedEmail(null);
+            setNotice(null);
           }}
           aria-expanded={showForm}
         >
@@ -152,13 +160,29 @@ function AdminUsersPage() {
         </section>
       )}
 
-      {addedEmail && (
+      {notice && (
         <p className="callout-success" role="status">
-          {addedEmail} was added. They can log in with the starting password.
+          {notice}
         </p>
       )}
 
-      {users && <JoinRequests users={users} />}
+      {toDelete && (
+        <ConfirmDeleteUser
+          // key: a fresh dialog (and error state) for each user picked.
+          key={toDelete.id}
+          user={toDelete}
+          onDeleted={handleDeleted}
+          onCancel={() => setToDelete(null)}
+        />
+      )}
+
+      {users && (
+        <JoinRequests
+          users={users}
+          onNotice={setNotice}
+          onDelete={setToDelete}
+        />
+      )}
 
       {isLoading && <p className="muted">Loading users…</p>}
 
@@ -180,6 +204,9 @@ function AdminUsersPage() {
                 <th scope="col">Role</th>
                 <th scope="col">Status</th>
                 <th scope="col">Added</th>
+                <th scope="col">
+                  <span className="visually-hidden">Actions</span>
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -198,6 +225,22 @@ function AdminUsersPage() {
                   </td>
                   <td>{user.isActive ? "Active" : "Disabled"}</td>
                   <td className="nowrap">{formatDate(user.createdAt)}</td>
+                  <td className="numeric">
+                    {/* Admins can't delete themselves; the backend agrees. */}
+                    {user.id !== me?.id && (
+                      <button
+                        type="button"
+                        className="button-secondary button-small"
+                        onClick={() => {
+                          setNotice(null);
+                          setToDelete(user);
+                        }}
+                        aria-label={`Delete ${user.email}`}
+                      >
+                        Delete…
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
