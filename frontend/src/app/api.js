@@ -1,5 +1,8 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { tokenReceived } from "../features/auth/authSlice.js";
+import {
+  sessionChecked,
+  tokenReceived,
+} from "../features/auth/authSlice.js";
 
 export const api = createApi({
   baseQuery: fetchBaseQuery({
@@ -27,6 +30,23 @@ export const api = createApi({
           dispatch(tokenReceived(data.accessToken));
         } catch {
           // The component reads the error from useLoginMutation.
+        }
+      },
+    }),
+    // The refresh token is sent automatically as the httpOnly cookie.
+    refresh: builder.mutation({
+      query: () => ({
+        url: "/auth/refresh",
+        method: "POST",
+      }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          dispatch(tokenReceived(data.accessToken));
+        } catch {
+          // No cookie, or it expired or was revoked: the user logs in again.
+        } finally {
+          dispatch(sessionChecked());
         }
       },
     }),
