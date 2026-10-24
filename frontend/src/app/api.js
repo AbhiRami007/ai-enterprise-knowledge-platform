@@ -1,22 +1,62 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import {
+  loggedOut,
   sessionChecked,
   tokenReceived,
 } from "../features/auth/authSlice.js";
 
+const rawBaseQuery = fetchBaseQuery({
+  baseUrl: import.meta.env.VITE_API_URL ?? "http://localhost:3000/api/v1",
+  // Lets the browser store and send the httpOnly refresh cookie.
+  credentials: "include",
+  prepareHeaders: (headers, { getState }) => {
+    const token = getState().auth.accessToken;
+    if (token) {
+      headers.set("Authorization", `Bearer ${token}`);
+    }
+    return headers;
+  },
+});
+
+// A 401 here means bad credentials or a dead cookie; refreshing would loop.
+const NO_REAUTH_URLS = ["/auth/login", "/auth/refresh"];
+
+// Shared by every request that hits a 401 at the same time. Refresh tokens
+// are single-use, so a second parallel refresh would revoke every session.
+let refreshPromise = null;
+
+async function baseQueryWithReauth(args, api, extraOptions) {
+  let result = await rawBaseQuery(args, api, extraOptions);
+
+  const url = typeof args === "string" ? args : args.url;
+  if (result.error?.status !== 401 || NO_REAUTH_URLS.includes(url)) {
+    return result;
+  }
+
+  if (!refreshPromise) {
+    refreshPromise = rawBaseQuery(
+      { url: "/auth/refresh", method: "POST" },
+      api,
+      extraOptions
+    ).finally(() => {
+      refreshPromise = null;
+    });
+  }
+  const refreshResult = await refreshPromise;
+
+  if (refreshResult.data) {
+    api.dispatch(tokenReceived(refreshResult.data.accessToken));
+    result = await rawBaseQuery(args, api, extraOptions);
+  } else {
+    api.dispatch(loggedOut());
+  }
+
+  return result;
+}
+
 export const api = createApi({
-  baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL ?? "http://localhost:3000/api/v1",
-    // Lets the browser store and send the httpOnly refresh cookie.
-    credentials: "include",
-    prepareHeaders: (headers, { getState }) => {
-      const token = getState().auth.accessToken;
-      if (token) {
-        headers.set("Authorization", `Bearer ${token}`);
-      }
-      return headers;
-    },
-  }),
+  baseQuery: baseQueryWithReauth,
+  tagTypes: ["Me"],
   endpoints: (builder) => ({
     login: builder.mutation({
       query: (credentials) => ({
@@ -24,6 +64,8 @@ export const api = createApi({
         method: "POST",
         body: credentials,
       }),
+      // A different user may log in; drop the previous profile from the cache.
+      invalidatesTags: ["Me"],
       async onQueryStarted(_credentials, { dispatch, queryFulfilled }) {
         try {
           const { data } = await queryFulfilled;
@@ -50,7 +92,11 @@ export const api = createApi({
         }
       },
     }),
+    me: builder.query({
+      query: () => "/auth/me",
+      providesTags: ["Me"],
+    }),
   }),
 });
 
-export const { useLoginMutation } = api;
+export const { useLoginMutation, useMeQuery } = api;
