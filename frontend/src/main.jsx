@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.jsx";
 import { Provider } from "react-redux";
+import { BrowserRouter } from "react-router";
 import { store } from "./app/store.js";
 import { api } from "./app/api.js";
 
@@ -13,7 +14,9 @@ store.dispatch(api.endpoints.refresh.initiate());
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <Provider store={store}>
-      <App />
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
     </Provider>
   </StrictMode>
 );

@@ -1,5 +1,8 @@
 import { useState } from "react";
+import { useSelector } from "react-redux";
+import { Navigate, useLocation } from "react-router";
 import { useLoginMutation } from "../../app/api.js";
+import { selectAccessToken } from "./authSlice.js";
 
 function errorMessage(error) {
   if (error.status === 401) return "Invalid email or password.";
@@ -13,15 +16,25 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [login, { isLoading, error }] = useLoginMutation();
+  const accessToken = useSelector(selectAccessToken);
+  const location = useLocation();
+
+  // Set by RequireAuth when it redirected here.
+  const from = location.state?.from?.pathname ?? "/";
 
   async function handleSubmit(event) {
     event.preventDefault();
     try {
+      // On success the token lands in Redux and the redirect below runs.
       await login({ email, password }).unwrap();
-      setPassword("");
     } catch {
       // Shown below via `error`.
     }
+  }
+
+  // Already logged in, e.g. /login opened from a bookmark.
+  if (accessToken) {
+    return <Navigate to={from} replace />;
   }
 
   return (
