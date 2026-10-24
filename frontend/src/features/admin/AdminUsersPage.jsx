@@ -5,6 +5,7 @@ import {
   useMeQuery,
 } from "../../app/api.js";
 import { formatDate } from "../../utils/format.js";
+import JoinRequests from "./JoinRequests.jsx";
 
 // Same limits as the backend's CreateUserDto.
 const MIN_PASSWORD_LENGTH = 12;
@@ -116,6 +117,8 @@ function AdminUsersPage() {
   const { data: users, isLoading, error, refetch } = useGetUsersQuery();
   const [showForm, setShowForm] = useState(false);
   const [addedEmail, setAddedEmail] = useState(null);
+  // Join requests are listed separately, above the members table.
+  const members = users?.filter((user) => user.status === "active") ?? [];
 
   function handleCreated(user) {
     setShowForm(false);
@@ -155,6 +158,8 @@ function AdminUsersPage() {
         </p>
       )}
 
+      {users && <JoinRequests users={users} />}
+
       {isLoading && <p className="muted">Loading users…</p>}
 
       {error && (
@@ -166,7 +171,7 @@ function AdminUsersPage() {
         </div>
       )}
 
-      {users?.length > 0 && (
+      {members.length > 0 && (
         <div className="table-wrapper">
           <table className="table">
             <thead>
@@ -178,7 +183,7 @@ function AdminUsersPage() {
               </tr>
             </thead>
             <tbody>
-              {users.map((user) => (
+              {members.map((user) => (
                 <tr key={user.id}>
                   <td>
                     {user.email}

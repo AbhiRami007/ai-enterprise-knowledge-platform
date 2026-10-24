@@ -1,10 +1,20 @@
 import { NavLink, Outlet } from "react-router";
-import { useLogoutMutation, useMeQuery } from "./api.js";
+import { useGetUsersQuery, useLogoutMutation, useMeQuery } from "./api.js";
+
+const REQUESTS_POLL_MS = 60_000;
 
 // Shell for every logged-in page; the page itself renders in <Outlet />.
 function Layout() {
   const { data: user } = useMeQuery();
   const [logout, { isLoading: isLoggingOut }] = useLogoutMutation();
+  // Admins only: checks for new join requests every minute for the badge.
+  const isAdmin = user?.role === "admin";
+  const { data: users } = useGetUsersQuery(undefined, {
+    skip: !isAdmin,
+    pollingInterval: REQUESTS_POLL_MS,
+    skipPollingIfUnfocused: true,
+  });
+  const pendingCount = users?.filter((u) => u.status === "pending").length ?? 0;
 
   return (
     <>
@@ -26,7 +36,17 @@ function Layout() {
             <NavLink to="/search">Search</NavLink>
             <NavLink to="/ask">Ask</NavLink>
             {user?.role === "admin" && (
-              <NavLink to="/admin/users">Users</NavLink>
+              <NavLink to="/admin/users">
+                Users
+                {pendingCount > 0 && (
+                  <span className="nav-badge">
+                    {pendingCount}
+                    <span className="visually-hidden">
+                      {pendingCount === 1 ? " pending request" : " pending requests"}
+                    </span>
+                  </span>
+                )}
+              </NavLink>
             )}
           </nav>
         </div>

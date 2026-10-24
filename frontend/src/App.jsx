@@ -2,6 +2,7 @@ import { useSelector } from "react-redux";
 import { Navigate, Route, Routes } from "react-router";
 import Layout from "./app/Layout.jsx";
 import LoginPage from "./features/auth/LoginPage.jsx";
+import SignupPage from "./features/auth/SignupPage.jsx";
 import RequireAuth from "./features/auth/RequireAuth.jsx";
 import HomePage from "./features/home/HomePage.jsx";
 import DocumentsPage from "./features/documents/DocumentsPage.jsx";
@@ -25,6 +26,7 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
       {/* Every route nested here is protected and gets the header. */}
       <Route
         element={

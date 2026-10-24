@@ -148,6 +148,36 @@ export const api = createApi({
       query: (body) => ({ url: "/users", method: "POST", body }),
       invalidatesTags: [{ type: "User", id: "LIST" }],
     }),
+    approveUser: builder.mutation({
+      query: ({ id, role }) => ({
+        url: `/users/${id}/approve`,
+        method: "PATCH",
+        body: { role },
+      }),
+      invalidatesTags: [{ type: "User", id: "LIST" }],
+    }),
+    rejectUser: builder.mutation({
+      query: (id) => ({ url: `/users/${id}/reject`, method: "PATCH" }),
+      invalidatesTags: [{ type: "User", id: "LIST" }],
+    }),
+    // Public: the signup page's company picker. Real backend endpoint.
+    searchTenants: builder.query({
+      query: (q) => ({ url: "/tenants/search", params: { q } }),
+    }),
+    // Public. With companyName: 201 + access token (new company, logged in).
+    // With tenantId: 202 { status: "pending" } and no token.
+    signup: builder.mutation({
+      query: (body) => ({ url: "/auth/signup", method: "POST", body }),
+      invalidatesTags: ["Me"],
+      async onQueryStarted(_body, { dispatch, queryFulfilled }) {
+        try {
+          const { data } = await queryFulfilled;
+          if (data.accessToken) dispatch(tokenReceived(data.accessToken));
+        } catch {
+          // The component reads the error from useSignupMutation.
+        }
+      },
+    }),
     getDocuments: builder.query({
       query: () => "/documents",
       // The "LIST" tag lets an upload refetch the list without knowing ids.
@@ -190,6 +220,10 @@ export const {
   useMeQuery,
   useGetUsersQuery,
   useCreateUserMutation,
+  useApproveUserMutation,
+  useRejectUserMutation,
+  useSearchTenantsQuery,
+  useSignupMutation,
   useGetDocumentsQuery,
   useGetDocumentQuery,
   useDeleteDocumentMutation,

@@ -1,10 +1,17 @@
 import { useState } from "react";
 import { useSelector } from "react-redux";
-import { Navigate, useLocation } from "react-router";
+import { Link, Navigate, useLocation } from "react-router";
 import { useLoginMutation } from "../../app/api.js";
 import { selectAccessToken } from "./authSlice.js";
 
 function errorMessage(error) {
+  // Only sent after a correct password, for accounts that aren't approved.
+  if (error.data?.code === "ACCOUNT_PENDING") {
+    return "Your account is waiting for approval by your company’s admin.";
+  }
+  if (error.data?.code === "ACCOUNT_REJECTED") {
+    return "Your request to join was declined. Contact your company’s admin.";
+  }
   if (error.status === 401) return "Invalid email or password.";
   if (error.status === 429) return "Too many attempts. Try again in a minute.";
   if (error.status === 400) return "Enter a valid email and password.";
@@ -74,6 +81,10 @@ function LoginPage() {
       <button type="submit" disabled={isLoading}>
         {isLoading ? "Logging in…" : "Log in"}
       </button>
+
+      <p className="muted small auth-switch">
+        New here? <Link to="/signup">Create an account</Link>
+      </p>
     </form>
   );
 }
