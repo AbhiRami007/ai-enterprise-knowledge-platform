@@ -149,7 +149,12 @@ function HomePage() {
       <div className="page-header">
         <div>
           <h1>{greeting()}</h1>
-          {user && <p className="muted page-subtitle">{user.email}</p>}
+          {user && (
+            <p className="muted page-subtitle">
+              {user.email}
+              {user.tenant && ` · ${user.tenant.name}`}
+            </p>
+          )}
         </div>
         <Link to="/ask" className="button-link">
           Ask a question

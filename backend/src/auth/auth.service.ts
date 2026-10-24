@@ -5,7 +5,7 @@ import {
 } from "@nestjs/common";
 import { UserRepository } from "../users/user.repository.js";
 import * as bcrypt from "bcryptjs";
-import { UserResponseDto } from "../users/dto/user-response.dto.js";
+import { ProfileResponseDto } from "../users/dto/profile-response.dto.js";
 import { hashPassword } from "../users/password.js";
 import { TokensService } from "./tokens.service.js";
 
@@ -79,12 +79,12 @@ export class AuthService {
   }
 
   async getProfile(userId: string) {
-    const user = await this.userRepository.findById(userId);
+    const user = await this.userRepository.findByIdWithTenant(userId);
 
-    if (!user || !user.isActive) {
+    if (!user || !user.isActive || !user.tenant) {
       throw new UnauthorizedException();
     }
 
-    return UserResponseDto.fromEntity(user);
+    return ProfileResponseDto.fromUserAndTenant(user, user.tenant);
   }
 }

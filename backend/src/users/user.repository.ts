@@ -18,6 +18,10 @@ export class UserRepository {
     return this.repository.findOneBy({ id });
   }
 
+  findByIdWithTenant(id: string): Promise<User | null> {
+    return this.repository.findOne({ where: { id }, relations: { tenant: true } });
+  }
+
   async updatePasswordHash(id: string, passwordHash: string) {
     await this.repository.update({ id }, { passwordHash });
   }

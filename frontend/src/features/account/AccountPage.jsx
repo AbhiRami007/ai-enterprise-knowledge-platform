@@ -154,6 +154,12 @@ function AccountPage() {
             <dd>{user.email}</dd>
             <dt>Role</dt>
             <dd>{ROLE_LABELS[user.role] ?? user.role}</dd>
+            {user.tenant && (
+              <>
+                <dt>Company</dt>
+                <dd>{user.tenant.name}</dd>
+              </>
+            )}
             <dt>Member since</dt>
             <dd>{formatDate(user.createdAt)}</dd>
           </dl>

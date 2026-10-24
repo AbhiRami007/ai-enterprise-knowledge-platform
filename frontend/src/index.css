@@ -136,6 +136,11 @@ button:disabled {
   font-weight: 600;
 }
 
+.tenant-name {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 .app-nav {
   display: flex;
   gap: 4px;

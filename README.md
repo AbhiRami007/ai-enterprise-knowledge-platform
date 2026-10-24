@@ -58,23 +58,24 @@ Postgres is bound to `127.0.0.1:5432` only, and data persists in the `postgres_d
 
 ### 3. Create the schema
 
-There are no migrations yet. For local development set `DB_SYNC=true` and the backend creates the tables (`users`, `refresh_tokens`, `documents`) on startup.
+There are no migrations yet. For local development set `DB_SYNC=true` and the backend creates the tables (`tenants`, `users`, `refresh_tokens`, `documents`) on startup.
 
 > Upgrading from an older checkout? `users.tenant_id` is now a `uuid`. Reset the dev database with `docker compose down -v` before starting again.
 
 ### 4. Create the first admin
 
-Users are created by admins, so seed one admin per tenant:
+Users are created by admins, so seed one admin per tenant (company):
 
 ```bash
 cd backend
+SEED_TENANT_NAME='Acme Corp' \
 SEED_ADMIN_EMAIL=admin@example.com \
 SEED_ADMIN_PASSWORD='a-long-passphrase' \
 npm run seed:admin
-# → Created admin admin@example.com in tenant <uuid>
+# → Created admin admin@example.com in tenant "Acme Corp" (<uuid>)
 ```
 
-Set `SEED_TENANT_ID=<uuid>` to add the admin to an existing tenant; otherwise a new tenant ID is generated. Running it again for an existing email does nothing.
+`SEED_TENANT_NAME` creates a new tenant. To add an admin to an existing tenant instead, set `SEED_TENANT_ID=<uuid>`. Running it again for an existing email does nothing.
 
 ### 5. Run the backend
 

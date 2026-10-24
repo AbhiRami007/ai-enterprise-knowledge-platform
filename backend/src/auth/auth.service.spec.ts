@@ -34,6 +34,8 @@ describe("AuthService", () => {
       jest.fn<(email: string) => Promise<typeof mockResolvedData | null>>(),
     findById:
       jest.fn<(id: string) => Promise<typeof mockResolvedData | null>>(),
+    findByIdWithTenant:
+      jest.fn<(id: string) => Promise<object | null>>(),
     updatePasswordHash:
       jest.fn<(id: string, passwordHash: string) => Promise<void>>(),
   };
@@ -99,8 +101,11 @@ describe("AuthService", () => {
     expect(result).toBe(null);
   });
 
-  it("should return the profile without the password hash", async () => {
-    mockUserRepository.findById.mockResolvedValue(mockResolvedData);
+  it("should return the profile with the tenant and without the password hash", async () => {
+    mockUserRepository.findByIdWithTenant.mockResolvedValue({
+      ...mockResolvedData,
+      tenant: { id: "tenant-1", name: "Acme Corp", createdAt: new Date() },
+    });
 
     const profile = await service.getProfile("user-1");
 
@@ -111,11 +116,12 @@ describe("AuthService", () => {
       tenantId: "tenant-1",
       isActive: true,
       createdAt: mockResolvedData.createdAt,
+      tenant: { id: "tenant-1", name: "Acme Corp" },
     });
   });
 
   it("should reject a profile request for a missing user", async () => {
-    mockUserRepository.findById.mockResolvedValue(null);
+    mockUserRepository.findByIdWithTenant.mockResolvedValue(null);
 
     await expect(service.getProfile("user-1")).rejects.toThrow(
       UnauthorizedException

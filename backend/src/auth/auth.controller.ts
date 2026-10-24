@@ -28,7 +28,7 @@ import { Public } from "./decorators/public.decorator.js";
 import { CurrentUser } from "./decorators/current-user.decorator.js";
 import { RateLimit } from "./decorators/rate-limit.decorator.js";
 import type { JwtPayload } from "./types/jwt-payload.js";
-import { UserResponseDto } from "../users/dto/user-response.dto.js";
+import { ProfileResponseDto } from "../users/dto/profile-response.dto.js";
 import {
   REFRESH_TOKEN_COOKIE,
   clearRefreshCookie,
@@ -194,7 +194,7 @@ export class AuthController {
     summary: "Get the logged-in user",
   })
   @ApiOkResponse({
-    type: UserResponseDto,
+    type: ProfileResponseDto,
   })
   @ApiUnauthorizedResponse({
     description: "Missing or invalid access token",

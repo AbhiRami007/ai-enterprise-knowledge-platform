@@ -10,7 +10,13 @@ function Layout() {
     <>
       <header className="app-header">
         <div className="app-header-start">
-          <span className="app-name">Knowledge Platform</span>
+          <span className="app-name">
+            Knowledge Platform
+            {/* The company the user is signed in to, from GET /auth/me. */}
+            {user?.tenant && (
+              <span className="tenant-name"> · {user.tenant.name}</span>
+            )}
+          </span>
           {/* NavLink adds class="active" to the link for the current page. */}
           <nav className="app-nav" aria-label="Main">
             <NavLink to="/" end>
