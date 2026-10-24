@@ -1,8 +1,9 @@
-import { useMeQuery } from "../../app/api.js";
+import { useLogoutMutation, useMeQuery } from "../../app/api.js";
 
 // Temporary until we add routing and real pages.
 function HomePage() {
   const { data: user, isLoading, error, refetch } = useMeQuery();
+  const [logout, { isLoading: isLoggingOut }] = useLogoutMutation();
 
   if (isLoading) {
     return <p>Loading…</p>;
@@ -17,6 +18,9 @@ function HomePage() {
       <p>Logged in as {user.email}</p>
       <button type="button" onClick={refetch}>
         Reload profile
+      </button>
+      <button type="button" onClick={() => logout()} disabled={isLoggingOut}>
+        {isLoggingOut ? "Logging out…" : "Log out"}
       </button>
     </>
   );

@@ -92,6 +92,23 @@ export const api = createApi({
         }
       },
     }),
+    // Revokes the refresh token and clears its cookie on the server.
+    logout: builder.mutation({
+      query: () => ({
+        url: "/auth/logout",
+        method: "POST",
+      }),
+      async onQueryStarted(_arg, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled;
+        } catch {
+          // Log out locally even if the server could not be reached.
+        } finally {
+          dispatch(loggedOut());
+          dispatch(api.util.resetApiState());
+        }
+      },
+    }),
     me: builder.query({
       query: () => "/auth/me",
       providesTags: ["Me"],
@@ -99,4 +116,4 @@ export const api = createApi({
   }),
 });
 
-export const { useLoginMutation, useMeQuery } = api;
+export const { useLoginMutation, useLogoutMutation, useMeQuery } = api;
