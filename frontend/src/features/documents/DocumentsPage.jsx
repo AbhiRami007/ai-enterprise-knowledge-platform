@@ -1,13 +1,64 @@
-import { useGetDocumentsQuery } from "../../app/api.js";
+import { useState } from "react";
+import { useSelector } from "react-redux";
+import { api, useGetDocumentsQuery } from "../../app/api.js";
 import { formatBytes, formatDate, formatFileType } from "../../utils/format.js";
 import StatusBadge from "./StatusBadge.jsx";
+import UploadForm from "./UploadForm.jsx";
+
+const POLL_MS = 3000;
+const selectDocumentsResult = api.endpoints.getDocuments.select();
+
+function isInProgress(doc) {
+  return doc.status === "pending" || doc.status === "processing";
+}
 
 function DocumentsPage() {
-  const { data: documents, isLoading, error, refetch } = useGetDocumentsQuery();
+  const [showUpload, setShowUpload] = useState(false);
+  const [uploadedTitle, setUploadedTitle] = useState(null);
+
+  // Read the cached list first, so polling runs only while something is
+  // still being processed and stops once every document is ready or failed.
+  const cached = useSelector(selectDocumentsResult);
+  const polling = cached.data?.some(isInProgress) ?? false;
+
+  const { data: documents, isLoading, error, refetch } = useGetDocumentsQuery(
+    undefined,
+    { pollingInterval: polling ? POLL_MS : 0, skipPollingIfUnfocused: true }
+  );
+
+  function handleUploaded(document) {
+    setShowUpload(false);
+    setUploadedTitle(document.title);
+  }
 
   return (
     <>
-      <h1>Documents</h1>
+      <div className="page-header">
+        <h1>Documents</h1>
+        <button
+          type="button"
+          onClick={() => {
+            setShowUpload((open) => !open);
+            setUploadedTitle(null);
+          }}
+          aria-expanded={showUpload}
+        >
+          {showUpload ? "Cancel" : "Upload document"}
+        </button>
+      </div>
+
+      {showUpload && (
+        <section className="panel" aria-label="Upload a document">
+          <UploadForm onUploaded={handleUploaded} />
+        </section>
+      )}
+
+      {uploadedTitle && (
+        <p className="callout-success" role="status">
+          “{uploadedTitle}” uploaded. It will be ready to search once
+          processing finishes.
+        </p>
+      )}
 
       {isLoading && <p className="muted">Loading documents…</p>}
 

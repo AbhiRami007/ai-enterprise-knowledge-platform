@@ -124,6 +124,17 @@ export const api = createApi({
         { type: "Document", id: "LIST" },
       ],
     }),
+    uploadDocument: builder.mutation({
+      query: ({ file, title }) => {
+        const body = new FormData();
+        body.append("file", file);
+        if (title) body.append("title", title);
+        // fetchBaseQuery leaves Content-Type unset for FormData, so the
+        // browser adds the multipart boundary itself.
+        return { url: "/documents", method: "POST", body };
+      },
+      invalidatesTags: [{ type: "Document", id: "LIST" }],
+    }),
   }),
 });
 
@@ -132,4 +143,5 @@ export const {
   useLogoutMutation,
   useMeQuery,
   useGetDocumentsQuery,
+  useUploadDocumentMutation,
 } = api;
